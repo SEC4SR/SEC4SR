@@ -8,7 +8,18 @@ import torch.nn.functional as F
 
 
 def QT_Non_Diff(audio, param=128, bits=16, same_size=True):
+
     assert torch.is_tensor(audio) == True
+    ori_shape = audio.shape
+    if len(audio.shape) == 1:
+        audio = audio.unsqueeze(0) # (T, ) --> (1, T)
+    elif len(audio.shape) == 2: # (B, T)
+        pass
+    elif len(audio.shape) == 3:
+        audio = audio.squeeze(1) # (B, 1, T) --> (B, T)
+    else:
+        raise NotImplementedError('Audio Shape Error')
+
     max = 2 ** (bits-1) - 1
     min = -1. * 2 ** (bits-1)
     abs_max = abs(min)
@@ -27,7 +38,7 @@ def QT_Non_Diff(audio, param=128, bits=16, same_size=True):
     if scale:
         audio_q.data /= abs_max
     
-    return audio_q
+    return audio_q.view(ori_shape)
 
 QT = BPDA(QT_Non_Diff, lambda *args: args[0]) # BPDA wrapper, make it differentiable
 
@@ -38,6 +49,15 @@ def BDR(audio, param=8, bits=16, same_size=True):
 def AT(audio, param=25, same_size=True):
 
     assert torch.is_tensor(audio) == True
+    ori_shape = audio.shape
+    if len(audio.shape) == 1:
+        audio = audio.unsqueeze(0) # (T, ) --> (1, T)
+    elif len(audio.shape) == 2: # (B, T)
+        pass
+    elif len(audio.shape) == 3:
+        audio = audio.squeeze(1) # (B, 1, T) --> (B, T)
+    else:
+        raise NotImplementedError('Audio Shape Error')
 
     snr = param
     snr = 10 ** (snr / 10)
@@ -46,11 +66,21 @@ def AT(audio, param=25, same_size=True):
     power_noise = power_audio / snr # (batch, 1)
     noise = torch.randn((batch, N), device=audio.device) * torch.sqrt(power_noise) # (batch, N)
     noised_audio = audio + noise
-    return noised_audio
+    return noised_audio.view(ori_shape)
 
 def AS(audio, param=3, same_size=True):
 
     assert torch.is_tensor(audio) == True
+    ori_shape = audio.shape
+    if len(audio.shape) == 1:
+        audio = audio.unsqueeze(0) # (T, ) --> (1, T)
+    elif len(audio.shape) == 2: # (B, T)
+        pass
+    elif len(audio.shape) == 3:
+        audio = audio.squeeze(1) # (B, 1, T) --> (B, T)
+    else:
+        raise NotImplementedError('Audio Shape Error')
+
     batch, _ = audio.shape
 
     kernel_size = param
@@ -63,13 +93,25 @@ def AS(audio, param=3, same_size=True):
     output = F.conv1d(audio, weight, padding=(kernel_size-1)//2) # (batch, 1, max_len)
     ###############################################################
 
-    return output.squeeze(1) # (batch, max_len)
+    return output.squeeze(1).view(ori_shape) # (batch, max_len)
 
 
 def MS(audio, param=3, same_size=True):
     r"""
     Apply median smoothing to the 1D tensor over the given window.
     """
+
+    assert torch.is_tensor(audio) == True
+    ori_shape = audio.shape
+    if len(audio.shape) == 1:
+        audio = audio.unsqueeze(0) # (T, ) --> (1, T)
+    elif len(audio.shape) == 2: # (B, T)
+        pass
+    elif len(audio.shape) == 3:
+        audio = audio.squeeze(1) # (B, 1, T) --> (B, T)
+    else:
+        raise NotImplementedError('Audio Shape Error')
+
     win_length = param
     # Centered windowed
     pad_length = (win_length - 1) // 2
@@ -81,4 +123,4 @@ def MS(audio, param=3, same_size=True):
     roll = audio.unfold(-1, win_length, 1)
 
     values, _ = torch.median(roll, -1)
-    return values
+    return values.view(ori_shape)

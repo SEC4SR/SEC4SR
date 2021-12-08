@@ -65,6 +65,16 @@ def Speech_Compression_Non_Diff(new, lengths, bits_per_sample,
         out_tensor = True
         new = new.clone().detach().cpu().numpy()
     
+    ori_shape = new.shape
+    if len(new.shape) == 1:
+        new = new.reshape((1, new.shape[0])) # (T, ) --> (1, T)
+    elif len(new.shape) == 2: # (B, T)
+        pass
+    elif len(new.shape) == 3:
+        new = new.reshape((new.shape[0], new.shape[2])) # (B, 1, T) --> (B, T)
+    else:
+        raise NotImplementedError('Audio Shape Error')
+    
     bit_rate = param
     n_audios, max_len = new.shape
     ### indicating the real length of each audio in new
@@ -111,6 +121,7 @@ def Speech_Compression_Non_Diff(new, lengths, bits_per_sample,
 
     shutil.rmtree(tmp_dir)
     opuseds = np.array([(x+[0]*(max_len-len(x)))[:max_len] for x in opuseds])
+    opuseds = opuseds.reshape(ori_shape)
     if out_tensor:
         opuseds = torch.tensor(opuseds, dtype=torch.float, device=device)
     if scale:

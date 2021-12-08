@@ -1,7 +1,6 @@
 
 import torch
-import time
-from model.xvecTDNN import xvecTDNN
+from model._xv_plda.xvecTDNN import xvecTDNN
 
 
 class xvectorExtractor(object):
@@ -29,20 +28,20 @@ class xvectorExtractor(object):
 		'''
 		return self.extractor.embedding(feat.unsqueeze(0).transpose(1, 2)).squeeze(0)
 
-	def LengthNormalization(self, ivector, expected_length):
-		# input_norm = torch.norm(ivector)
-		input_norm = torch.norm(ivector).item()
+	def LengthNormalization(self, emb, expected_length):
+		# input_norm = torch.norm(emb)
+		input_norm = torch.norm(emb).item()
 		if input_norm == 0:
-			print('Zero ivector!')
+			print('Zero emb!')
 			exit(0)
 		radio = expected_length / input_norm
-		ivector = ivector * radio
+		emb = emb * radio
 
-		return ivector
+		return emb
 
-	def SubtractGlobalMean(self, ivector, mean):
-		ivector = ivector-mean
-		return ivector
+	def SubtractGlobalMean(self, emb, mean):
+		emb = emb-mean
+		return emb
 	
 	def to(self, device):
 

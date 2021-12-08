@@ -7,9 +7,12 @@ Paper: Who is Real Bob? Adversarial Attacks on Speaker Recognition Systems (IEEE
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
+from defense.defense import parser_defense
 
-from model.xvector_PLDA import xvector_PLDA
-from model.ivector_PLDA import ivector_PLDA
+from model.iv_plda import iv_plda
+from model.xv_plda import xv_plda
+
+from model.defended_model import defended_model
 
 from dataset.Spk10_test import Spk10_test
 from dataset.Spk10_imposter import Spk10_imposter
@@ -45,20 +48,21 @@ def set_threshold(score_target, score_untarget):
 
 def main(args):
 
-    #Step 1: set up system helper
-    if args.system_type == 'iv':
-        model = ivector_PLDA(args.model_file, args.gmm, args.extractor, 
-                args.plda, args.mean, args.transform, device=device, threshold=None)
-    elif args.system_type == 'xv':
-        model = xvector_PLDA(args.model_file, args.extractor, args.plda, args.mean, args.transform, 
-                device=device, threshold=None)
+    #Step 1: set up base_model
+    if args.system_type == 'iv_plda':
+        base_model = iv_plda(args.gmm, args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file)
+    elif args.system_type == 'xv_plda':
+        base_model = xv_plda(args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file)
     else:
         raise NotImplementedError('Unsupported System Type')
     
+    defense, defense_name = parser_defense(args.defense, args.defense_param, args.defense_flag, args.defense_order)
+    model = defended_model(base_model=base_model, defense=defense, order=args.defense_order)
+    
     #Step2: load dataset
-    test_dataset = Spk10_test(model.spk_ids, args.root, return_file_name=True)
+    test_dataset = Spk10_test(base_model.spk_ids, args.root, return_file_name=True)
     test_loader = DataLoader(test_dataset, batch_size=1, num_workers=0)
-    imposter_dataset = Spk10_imposter(model.spk_ids, args.root, return_file_name=True)
+    imposter_dataset = Spk10_imposter(base_model.spk_ids, args.root, return_file_name=True)
     imposter_loader = DataLoader(imposter_dataset, batch_size=1, num_workers=0)
 
     #Step3: scoring
@@ -67,14 +71,17 @@ def main(args):
     trues = [] # used to calculate IER for OSI
     max_scores = [] # used to calculate IER for OSI
     decisions = [] # used to calculate IER for OSI
+
+    acc_cnt = 0
     with torch.no_grad():
         for index, (origin, true, file_name) in enumerate(test_loader):
             origin = origin.to(device)
             true = true.cpu().item()
+            # print(origin.shape)
             decision, scores = model.make_decision(origin)
             decision = decision.cpu().item()
             scores = scores.cpu().numpy().flatten() # (n_spks,)
-            print(index, file_name[0], scores, true, decision)
+            # print(index, file_name[0], scores, true, decision)
             if args.task == 'SV':
                 score_target.append(scores[true])
                 score_untarget += np.delete(scores, true).tolist()
@@ -84,6 +91,9 @@ def main(args):
                 trues.append(true)
                 max_scores.append(np.max(scores))
                 decisions.append(decision)
+            
+            if decision == true:
+                acc_cnt += 1
 
         for index, (origin, true, file_name) in enumerate(imposter_loader):
             origin = origin.to(device)
@@ -91,7 +101,7 @@ def main(args):
             decision, scores = model.make_decision(origin)
             decision = decision.cpu().item()
             scores = scores.cpu().numpy().flatten() # (n_spks,)
-            print(index, file_name[0], scores, true, decision)
+            # print(index, file_name[0], scores, true, decision)
             if args.task == 'SV':
                 score_untarget += scores.tolist()
             elif args.task == 'OSI':
@@ -99,16 +109,19 @@ def main(args):
     
     threshold, frr, far = set_threshold(score_target, score_untarget)
     if args.task == 'SV':
-        print("----- Test of {}-PLDA based {}, result ---> threshold: {} FRR: {}, FAR: {}".format(args.system_type, 
-        args.task, threshold, frr, far))
+        print("----- Test of {}-based {}, result ---> threshold: {:.2f} EER: {:.2f}".format(args.system_type, 
+        args.task, threshold, max(frr, far)))
     elif args.task == 'OSI':
         IER_cnt = np.intersect1d(np.argwhere(max_scores >= threshold).flatten(),
                     np.argwhere(decisions != trues).flatten()).flatten().size
         # # IER: Identification Error, 
         # for detail, refer to 'Who is Real Bob? Adversarial Attacks on Speaker Recognition Systems'
         IER = IER_cnt * 100 / len(trues) 
-        print("----- Test of {}-PLDA based {}, result ---> threshold: {}, FRR: {}, IER: {}, FAR: {} -----".format(
-            args.system_type, args.task, threshold, frr, IER, far))
+        print("----- Test of {}-based {}, result ---> threshold: {:.2f}, EER: {:.2f}, IER: {:.2f} -----".format(
+            args.system_type, args.task, threshold, max(frr, far), IER))
+        
+    
+    print('CSI ACC:', acc_cnt * 100 / len(test_loader))
 
 
 if __name__ == '__main__':
@@ -118,27 +131,27 @@ if __name__ == '__main__':
 
     parser.add_argument('-root', default='./data')
     parser.add_argument('-task', required=True, choices=['SV', 'OSI']) #the threshold setting of SV is different from OSI
+    parser.add_argument('-defense', nargs='+', default=None)
+    parser.add_argument('-defense_param', nargs='+', default=None)
+    parser.add_argument('-defense_flag', nargs='+', default=None, type=int)
+    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])
 
     subparser = parser.add_subparsers(dest='system_type') # either iv (ivector-PLDA) or xv (xvector-PLDA)
 
-    iv_parser = subparser.add_parser("iv")
-    #to set threshold, should be the multiple speaker model, not single speaker model, 
-    # no matter what the task is (SV/OSI)
-    iv_parser.add_argument('-model_file', default='./model_file/speaker_model_iv') # speaker_model_iv
-    iv_parser.add_argument('-plda', default='./iv_system/plda.txt')
-    iv_parser.add_argument('-mean', default='./iv_system/mean.vec')
-    iv_parser.add_argument('-transform', default='./iv_system/transform.txt')
-    iv_parser.add_argument('-extractor', default='./iv_system/final_ie.txt')
-    iv_parser.add_argument('-gmm', default='./iv_system/final_ubm.txt')
-
-    xv_parser = subparser.add_parser("xv")
-    #to set threshold, should be the multiple speaker model, not single speaker model, 
-    # no matter what the task is (SV/OSI)
-    xv_parser.add_argument('-model_file', default='./model_file/speaker_model_xv') # speaker_model_xv
-    xv_parser.add_argument('-plda', default='./xv_system/plda.txt')
-    xv_parser.add_argument('-mean', default='./xv_system/mean.vec')
-    xv_parser.add_argument('-transform', default='./xv_system/transform.txt')
-    xv_parser.add_argument('-extractor', default='./xv_system/xvecTDNN_origin.ckpt')
+    iv_parser = subparser.add_parser("iv_plda")
+    iv_parser.add_argument('-gmm', default='pre-trained-models/iv_plda/final_ubm.txt')
+    iv_parser.add_argument('-extractor', default='pre-trained-models/iv_plda/final_ie.txt')
+    iv_parser.add_argument('-plda', default='pre-trained-models/iv_plda/plda.txt')
+    iv_parser.add_argument('-mean', default='pre-trained-models/iv_plda/mean.vec')
+    iv_parser.add_argument('-transform', default='pre-trained-models/iv_plda/transform.txt')
+    iv_parser.add_argument('-model_file', default='model_file/iv_plda/speaker_model_iv_plda')
+    
+    xv_parser = subparser.add_parser("xv_plda")
+    xv_parser.add_argument('-extractor', default='pre-trained-models/xv_plda/xvecTDNN_origin.ckpt')
+    xv_parser.add_argument('-plda', default='pre-trained-models/xv_plda/plda.txt')
+    xv_parser.add_argument('-mean', default='pre-trained-models/xv_plda/mean.vec')
+    xv_parser.add_argument('-transform', default='pre-trained-models/xv_plda/transform.txt')
+    xv_parser.add_argument('-model_file', default='model_file/xv_plda/speaker_model_xv_plda')
 
     args = parser.parse_args()
     main(args)

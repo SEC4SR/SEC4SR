@@ -1,6 +1,6 @@
 
 from attack.FGSM import FGSM
-from attack.utils import CWLoss
+from attack.utils import SEC4SR_MarginLoss
 import torch
 import numpy as np
 
@@ -37,7 +37,7 @@ class CW2(FGSM):
             self.threshold = self.model.threshold
             print('Running white box attack for {} task, directly using the true threshold {}'.format(self.task, self.threshold))
 
-        self.loss = CWLoss(targeted=self.targeted, confidence=self.confidence, task=self.task, threshold=self.threshold, clip_max=True)
+        self.loss = SEC4SR_MarginLoss(targeted=self.targeted, confidence=self.confidence, task=self.task, threshold=self.threshold, clip_max=True)
     
     def attack_batch(self, x_batch, y_batch, lower, upper, batch_id):
 
@@ -57,7 +57,7 @@ class CW2(FGSM):
         n_audios, _, _ = x_batch.shape
 
         # change target_label to one hot encoding
-        # DELETE: CW Loss in utils.py will automatically change to one hot coding
+        # DELETE:Margin Loss in utils.py will automatically change to one hot coding
         # n_spks = self.model.num_spks
         # target_label_one_hot = torch.zeros((n_audios, n_spks), dtype=torch.float, device=x_batch.device)
         # for i in range(n_audios):
@@ -88,7 +88,7 @@ class CW2(FGSM):
                 # deal with box constraint, [-1, 1], different from image
                 input_x = torch.tanh(self.modifier + torch.atanh(x_batch * 0.999999))
                 scores = self.model(input_x) # (n_audios, n_spks)
-                # loss1 = self.loss(scores, target_label_one_hot) # CW Loss in utils.py will automatically change to one hot coding
+                # loss1 = self.loss(scores, target_label_one_hot) # Margin Loss in utils.py will automatically change to one hot coding
                 loss1 = self.loss(scores, y_batch)
                 loss2 = torch.sum(torch.square(input_x - x_batch), dim=(1,2))
                 loss = const * loss1 + loss2

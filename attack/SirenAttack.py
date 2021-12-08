@@ -177,7 +177,7 @@ class SirenAttack(Attack):
         if self.task in ['SV', 'OSI'] and self.threshold is None:
             raise NotImplementedError('You are running black box attack for {} task, \
                         but the threshold not specified. Consider Estimating the threshold by FAKEBOB!')
-        self.loss, self.grad_sign = resolve_loss('CW', self.targeted, self.confidence, self.task, self.threshold, False)
+        self.loss, self.grad_sign = resolve_loss('Margin', self.targeted, self.confidence, self.task, self.threshold, False)
         self.EOT_wrapper = EOT(self.model, self.loss, self.EOT_size, self.EOT_batch_size, False)
 
         lower = -1

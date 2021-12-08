@@ -6,10 +6,11 @@ import time
 import logging
 
 from dataset.Spk251_train import Spk251_train
-from dataset.Spk251_test import Spk251_test 
-from model.AudioNet import AudioNet
+from dataset.Spk251_test import Spk251_test
 
-from defense.defense import *
+from model.audionet_csine import audionet_csine
+from model.defended_model import defended_model
+from defense.defense import parser_defense 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -61,18 +62,16 @@ def validation(model, val_data):
 def main(args):
 
     # load model
-    # speaker info
-    defense_param = parser_defense_param(args.defense, args.defense_param)
-    model = AudioNet(args.label_encoder,
-                    transform_layer=args.defense,
-                    transform_param=defense_param)
-    spk_ids = model.spk_ids 
+    # load model
     if args.ori_model_ckpt:
         print(args.ori_model_ckpt)
-        # state_dict = torch.load(args.ori_model_ckpt, map_location=device).state_dict()
-        state_dict = torch.load(args.ori_model_ckpt, map_location=device)
-        model.load_state_dict(state_dict)
-    model.to(device)
+        base_model = audionet_csine(extractor_file=args.ori_model_ckpt, label_encoder=args.label_encoder, device=device)
+        base_model.train() # important!! since audionet_csine() will set to eval() if extractor_file is not None
+    else:
+        base_model = audionet_csine(label_encoder=args.label_encoder, device=device)
+    spk_ids = base_model.spk_ids
+    defense, defense_name = parser_defense(args.defense, args.defense_param, args.defense_flag, args.defense_order)
+    model = defended_model(base_model=base_model, defense=defense, order=args.defense_order)
     print('load model done')
 
     # load optimizer
@@ -112,9 +111,12 @@ def main(args):
     criterion = torch.nn.CrossEntropyLoss()
 
     # 
-    log = args.log if args.log else './model_file/AuioNet-natural-{}-{}.log'.format(args.defense, args.defense_param)
+    log = args.log if args.log else ('./model_file/audionet-natural-{}.log'.format(defense_name) if defense is not None else \
+                                    './model_file/audionet-natural.log')
     logging.basicConfig(filename=log, level=logging.DEBUG)
-    model_ckpt = args.model_ckpt if args.model_ckpt else './model_file/AudioNet-natural-{}-{}'.format(args.defense, args.defense_param)
+    model_ckpt = args.model_ckpt if args.model_ckpt else \
+        ('./model_file/audionet-natural-{}'.format(defense_name) if defense is not None else \
+                                                                './model_file/audionet-natural') 
     print(log, model_ckpt)
 
     num_batches = len(train_dataset) // args.batch_size

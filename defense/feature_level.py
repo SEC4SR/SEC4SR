@@ -11,7 +11,6 @@ import math
 import torch
 from libKMCUDA import kmeans_cuda
 from kmeans_pytorch import kmeans as kmeans_pytorch # CPU version and 'cos' distance; # re-name to avoid repeated function names
-import time
 
 def FeCo(feat, method='kmeans', param=0.5, other_param='L2'):
     return FEATURE_COMPRESSION(feat, method, param, other_param)
@@ -31,11 +30,23 @@ def FEATURE_COMPRESSION(feat, method='kmeans', param=0.5, other_param='L2'):
         for kmeans, it is either 'L2' or 'cosine'; for warped_kmeans, it is 'random' or 'ts', by default 'L2'
     """
     if method == 'kmeans':
-        return kmeans(feat, param=param, other_param=other_param)
+        cl_m = lambda x: kmeans(x, param=param, other_param=other_param, force=feat.shape[0] > 1)
     elif method == 'warped_kmeans':
-        return warped_kmeans(feat, param=param, other_param=other_param)
+        cl_m = lambda x: warped_kmeans(x, param=param, other_param=other_param)
     else:
         raise NotImplementedError('Currently FEATURE COMPRESSION only suppots kmeans and warped_kmeans')
+    
+    compressed_feat = None
+    for i, x in enumerate(feat):
+        y = cl_m(x)
+        y = y.unsqueeze(0)
+        print(i, y.shape)
+        if i == 0:
+            compressed_feat = y
+        else:
+            compressed_feat = torch.cat((compressed_feat, y), dim=0)
+    return compressed_feat
+
 
 def TS(feat, k):
     n = feat.size()[0]
@@ -152,7 +163,7 @@ def warped_kmeans(feat, param=0.5, delta=0., other_param="random"):
     return warped_feat
 
 
-def kmeans(feat, param=0.5, other_param="L2"):
+def kmeans(feat, param=0.5, other_param="L2", force=True):
 
     def get_device(name):
         if str(name) == "cpu":
@@ -184,8 +195,12 @@ def kmeans(feat, param=0.5, other_param="L2"):
     y = None
     for i in range(k):
         ids = np.argwhere(cluster_ids == i).flatten()
+        y_ = None
         if ids.size > 0:
             y_ = torch.mean(feat[ids, :], dim=0).unsqueeze(0)
+        elif force: # force the shape of y to be (k, dim), otherwise we cannot concatenate the batch
+            y_ = feat[i:i+1, :]
+        if y_ is not None:
             if y is None:
                 y = y_
             else:

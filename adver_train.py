@@ -5,13 +5,15 @@ import numpy as np
 import time
 import logging
 
-from model.AudioNet import AudioNet
 from attack.FGSM import FGSM
 from attack.PGD import PGD
 from dataset.Spk251_train import Spk251_train
 from dataset.Spk251_test import Spk251_test
 
-from defense.defense import *
+from defense.defense import parser_defense
+
+from model.audionet_csine import audionet_csine
+from model.defended_model import defended_model
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -19,8 +21,10 @@ def parser_args():
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-defense', default=None)
-    parser.add_argument('-defense_param', default=None, nargs='+')
+    parser.add_argument('-defense', nargs='+', default=None)
+    parser.add_argument('-defense_param', nargs='+', default=None)
+    parser.add_argument('-defense_flag', nargs='+', default=None)
+    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])
 
     parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
 
@@ -95,18 +99,15 @@ def validation(args, model, val_data, attacker):
 def main(args):
 
     # load model
-    # speaker info
-    defense_param = parser_defense_param(args.defense, args.defense_param)
-    model = AudioNet(args.label_encoder,
-                    transform_layer=args.defense, 
-                    transform_param=defense_param)
-    spk_ids = model.spk_ids
     if args.ori_model_ckpt:
         print(args.ori_model_ckpt)
-        # state_dict = torch.load(args.ori_model_ckpt, map_location=device).state_dict()
-        state_dict = torch.load(args.ori_model_ckpt, map_location=device)
-        model.load_state_dict(state_dict)
-    model.to(device)
+        base_model = audionet_csine(extractor_file=args.ori_model_ckpt, label_encoder=args.label_encoder, device=device)
+        base_model.train() # important!! since audionet_csine() will set to eval() if extractor_file is not None
+    else:
+        base_model = audionet_csine(label_encoder=args.label_encoder, device=device)
+    spk_ids = base_model.spk_ids
+    defense, defense_name = parser_defense(args.defense, args.defense_param, args.defense_flag, args.defense_order)
+    model = defended_model(base_model=base_model, defense=defense, order=args.defense_order)
     print('load model done')
 
     # load optimizer
@@ -161,9 +162,12 @@ def main(args):
     criterion = torch.nn.CrossEntropyLoss()
 
     # 
-    log = args.log if args.log else './model_file/AuioNet-adver-{}-{}.log'.format(args.defense, args.defense_param)
+    log = args.log if args.log else ('./model_file/audionet-adver-{}.log'.format(defense_name) if defense is not None else \
+                                    './model_file/audionet-adver.log')
     logging.basicConfig(filename=log, level=logging.DEBUG)
-    model_ckpt = args.model_ckpt if args.model_ckpt else './model_file/AudioNet-adver-{}-{}'.format(args.defense, args.defense_param)
+    model_ckpt = args.model_ckpt if args.model_ckpt else \
+        ('./model_file/audionet-adver-{}'.format(defense_name) if defense is not None else \
+                                                                './model_file/audionet-adver') 
     print(log, model_ckpt)
 
     num_batches = len(train_dataset) // args.batch_size

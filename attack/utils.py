@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 from collections import Counter
 
-class SEC4SR_CrossEntropy(nn.CrossEntropyLoss): # deal with something special
+class SEC4SR_CrossEntropy(nn.CrossEntropyLoss): # deal with something special on top of CrossEntropyLoss
 
     def __init__(self, weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean', task='CSI'):
         super().__init__(weight=weight, size_average=size_average, ignore_index=ignore_index, reduce=reduce, reduction=reduction)
@@ -27,7 +27,7 @@ class SEC4SR_CrossEntropy(nn.CrossEntropyLoss): # deal with something special
         
         return loss
 
-class CWLoss(nn.Module):
+class SEC4SR_MarginLoss(nn.Module): # deal with something special on top of MarginLoss
     
     def __init__(self, targeted=False, confidence=0., task='CSI', threshold=None, clip_max=True) -> None:
         super().__init__()
@@ -97,10 +97,10 @@ class CWLoss(nn.Module):
         return loss 
 
 def resolve_loss(loss_name='Entropy', targeted=False, confidence=0., task='CSI', threshold=None, clip_max=True):
-    assert loss_name in ['Entropy', 'CW']
+    assert loss_name in ['Entropy', 'Margin']
     assert task in ['CSI', 'SV', 'OSI']
-    if task == 'SV' or task == 'OSI' or loss_name == 'CW': # SV/OSI: ignore loss name, force using CW Loss
-        loss = CWLoss(targeted=targeted, confidence=confidence, task=task, threshold=threshold, clip_max=clip_max)
+    if task == 'SV' or task == 'OSI' or loss_name == 'Margin': # SV/OSI: ignore loss name, force using Margin Loss
+        loss = SEC4SR_MarginLoss(targeted=targeted, confidence=confidence, task=task, threshold=threshold, clip_max=clip_max)
     else:
         # loss = nn.CrossEntropyLoss(reduction='none') # ONLY FOR CSI TASK
         loss = SEC4SR_CrossEntropy(reduction='none', task='CSI') # ONLY FOR CSI TASK

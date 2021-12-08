@@ -4,6 +4,9 @@ Part of the code is drawn from
 https://github.com/lixucuhk/adversarial-attack-on-GMM-i-vector-based-speaker-verification-systems
 Paper:
 Adversarial Attacks on GMM i-vector based Speaker Verification Systems
+
+I have made some modifications to speed up the compuation by replacing naive loop (ComputeScores_loop) with matrix computation (ComputeScores)
+Also, 'ComputeScores_loop' does not support batch_scoring, while 'ComputeScores' does.
 '''
 
 import torch
@@ -61,6 +64,11 @@ class PLDA(object):
 			data.append(mat.tolist())
 		print('totally %d ivectors' %(i))
 		return keys, data
+
+	
+	def Transform(self, ivector, num_examples, simple_length_norm, normalize_length):
+
+		return self.TransformIvector(ivector, num_examples, simple_length_norm, normalize_length)
 
 	def TransformIvector(self, ivector, num_examples, simple_length_norm, normalize_length):
 		# print(self.transform, self.mean, ivector),

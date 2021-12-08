@@ -8,6 +8,16 @@ from torch_lfilter import lfilter
 def DS(audio, param=0.5, fs=16000, same_size=True):
     
     assert torch.is_tensor(audio) == True
+    assert torch.is_tensor(audio) == True
+    ori_shape = audio.shape
+    if len(audio.shape) == 1:
+        audio = audio.unsqueeze(0) # (T, ) --> (1, T)
+    elif len(audio.shape) == 2: # (B, T)
+        pass
+    elif len(audio.shape) == 3:
+        audio = audio.squeeze(1) # (B, 1, T) --> (B, T)
+    else:
+        raise NotImplementedError('Audio Shape Error')
     
     down_ratio = param
     new_freq = int(fs * down_ratio)
@@ -17,11 +27,20 @@ def DS(audio, param=0.5, fs=16000, same_size=True):
     new_audio = up_sampler(down_audio)
     if new_audio.shape != audio.shape and same_size: ## sometimes the returned audio may have longer size (usually 1 point)
         return new_audio[..., :audio.shape[1]]
-    return new_audio
+    return new_audio.view(ori_shape)
 
 def LPF(new, fs=16000, wp=4000, param=8000, gpass=3, gstop=40, same_size=True):
 
     assert torch.is_tensor(new) == True
+    ori_shape = new.shape
+    if len(new.shape) == 1:
+        new = new.unsqueeze(0) # (T, ) --> (1, T)
+    elif len(new.shape) == 2: # (B, T)
+        pass
+    elif len(new.shape) == 3:
+        new = new.squeeze(1) # (B, 1, T) --> (B, T)
+    else:
+        raise NotImplementedError('Audio Shape Error')
 
     ws = param
     wp = 2 * wp / fs
@@ -33,11 +52,20 @@ def LPF(new, fs=16000, wp=4000, param=8000, gpass=3, gstop=40, same_size=True):
     a = torch.tensor(a, device="cpu", dtype=torch.float)
     b = torch.tensor(b, device="cpu", dtype=torch.float)
     new_audio = lfilter(b, a, audio).T
-    return new_audio.to(new.device)
+    return new_audio.to(new.device).view(ori_shape)
 
 def BPF(new, fs=16000, wp=[300, 4000], param=[50, 5000], gpass=3, gstop=40, same_size=True):
 
     assert torch.is_tensor(new) == True
+    ori_shape = new.shape
+    if len(new.shape) == 1:
+        new = new.unsqueeze(0) # (T, ) --> (1, T)
+    elif len(new.shape) == 2: # (B, T)
+        pass
+    elif len(new.shape) == 3:
+        new = new.squeeze(1) # (B, 1, T) --> (B, T)
+    else:
+        raise NotImplementedError('Audio Shape Error')
 
     ws = param
     wp = [2 * wp_ / fs for wp_ in wp]
@@ -49,4 +77,4 @@ def BPF(new, fs=16000, wp=[300, 4000], param=[50, 5000], gpass=3, gstop=40, same
     a = torch.tensor(a, device="cpu", dtype=torch.float)
     b = torch.tensor(b, device="cpu", dtype=torch.float)
     new_audio = lfilter(b, a, audio).T
-    return new_audio.to(new.device)
+    return new_audio.to(new.device).view(ori_shape)

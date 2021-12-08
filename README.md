@@ -31,9 +31,10 @@ After downloading, untar them inside `./data` directory.
 
 ## 1.3 Model Preparation
 ### 1.3.1 Speaker Enroll (CSI-E/SV/OSI tasks)
-- Download [iv_system, MD5:bfe90ec7782b54dc295e72b5bf789377](https://drive.google.com/uc?id=13yDZvM6a7W1Str2KEI7Vrm2xSdxWe7Vv&export\=download) and [xv_system, MD5:37cb3e7ca48c0da3ae72a35195aacf58](https://drive.google.com/uc?id=1HbpR6cUuPzDQLVvQTFUpIAflEa1eP-XF&export\=download), and untar them inside the reposity directory (i.e., `./`). Iv_system and xv_system contain the pre-trained ivector-PLDA and xvector-PLDA background models.
-- Run `python enroll.py iv` and `python enroll.py xv` to enroll the speakers in Spk10_enroll for ivector and xvector systems. Multiple speaker models for CSI-E and OSI tasks are stored as `speaker_model_iv` and `speaker_model_xv` inside `./model_file`. Single speaker models for SV task are  stored as `speaker_model_iv_{ID}` and `speaker_model_xv_{ID}` inside `./model_file`.
-- Run `python set_threshold.py -task SV iv`, `python set_threshold.py -task OSI iv`, `python set_threshold.py -task SV xv` and `python set_threshold.py -task OSI xv` to set the threshold of the system.
+<!-- - Download [iv_system, MD5:bfe90ec7782b54dc295e72b5bf789377](https://drive.google.com/uc?id=13yDZvM6a7W1Str2KEI7Vrm2xSdxWe7Vv&export\=download) and [xv_system, MD5:37cb3e7ca48c0da3ae72a35195aacf58](https://drive.google.com/uc?id=1HbpR6cUuPzDQLVvQTFUpIAflEa1eP-XF&export\=download), and untar them inside the reposity directory (i.e., `./`). Iv_system and xv_system contain the pre-trained ivector-PLDA and xvector-PLDA background models. -->
+- Download [pre-trained-models, MD5:bfe90ec7782b54dc295e72b5bf789377](https://drive.google.com/uc?id=1kxsSr7V_DbPloUPeqgsxUbuHsV6rBveH&export\=download) and untar it inside the reposity directory (i.e., `./`). It contains the pre-trained ivector-PLDA and xvector-PLDA background models.
+- Run `python enroll.py iv_plda` and `python enroll.py xv_plda` to enroll the speakers in Spk10_enroll for ivector-PLDA and xvector-PLDA systems. Multiple speaker models for CSI-E and OSI tasks are stored as `speaker_model_iv_plda` and `speaker_model_xv_plda` inside `./model_file`. Single speaker models for SV task are  stored as `speaker_model_iv_plda_{ID}` and `speaker_model_xv_plda_{ID}` inside `./model_file`.
+- Run `python set_threshold.py -task SV iv_plda`, `python set_threshold.py -task OSI iv_plda`, `python set_threshold.py -task SV xv_plda` and `python set_threshold.py -task OSI xv_plda` to set the threshold of the system.
 
 ### 1.3.2 Natural Training (CSI-NE task)
 - Sole natural training: 
@@ -41,7 +42,9 @@ After downloading, untar them inside `./data` directory.
   `python natural_train.py -num_epoches 30 -batch_size 128 -model_ckpt ./model_file/natural-audionet -log ./model_file/natural-audionet-log`
 - Natural training with QT (q=512)
 
-  `python adver_train.py -attacker PGD -epsilon 0.002 -max_iter 10 -defense QT -defense_param 512 -EOT_size 1 -EOT_batch_size 1 -model_ckpt ./model_file/QT-512-pgd-adver-audionet -log ./model_file/QT-512-pgd-adver-audionet-log`
+  `python adver_train.py -attacker PGD -epsilon 0.002 -max_iter 10 -defense QT -defense_param 512 -defense_flag 0 -EOT_size 1 -EOT_batch_size 1 -model_ckpt ./model_file/QT-512-pgd-adver-audionet -log ./model_file/QT-512-pgd-adver-audionet-log`
+
+  Note: `-defense_flag 0` means QT operates at the waveform level.
 
 ### 1.3.3 Adversarial Training (CSI-NE task)
 - Sole FGSM adversarial training:
@@ -52,31 +55,39 @@ After downloading, untar them inside `./data` directory.
   `python adver_train.py -attacker PGD -epsilon 0.002 -max_iter 10 -model_ckpt ./model_file/pgd-adver-audionet -log ./model_file/pgd-adver-audionet-log`
 - Combining adversarial training with input transformation AT (randomized, should use EOT during training)
   
-  `python adver_train.py -attacker PGD -epsilon 0.002 -max_iter 10 -defense AT -defense_param 16 -EOT_size 10 -EOT_batch_size 5 -model_ckpt ./model_file/AT-pgd-adver-audionet -log ./model_file/AT-pgd-adver-audionet-log` 
+  `python adver_train.py -attacker PGD -epsilon 0.002 -max_iter 10 -defense AT -defense_param 16 -defense_flag 0 -EOT_size 10 -EOT_batch_size 5 -model_ckpt ./model_file/AT-pgd-adver-audionet -log ./model_file/AT-pgd-adver-audionet-log` 
 
 ## 1.4 Generate Adversarial Examples
 - Example 1: FAKEBOB attack on naturally-trained audionet model  
 
-  `python attackMain.py -system_type audionet -model_file ./model_file/QT-512-natural-audionet -task CSI -root ./data -name Spk251_test -des ./adver-audio/QT-512-audionet-fakebob FAKEBOB -epsilon 0.002`
-- Example 2: FGSM targeted attack on FeCo-defended ivector-plda model for OSI task. FeCo is randomized, using EOT
+  `python attackMain.py -task CSI -root ./data -name Spk251_test -des ./adver-audio/QT-512-audionet-fakebob audionet_csine -extractor ./model_file/QT-512-natural-audionet FAKEBOB -epsilon 0.002`
+- Example 2: PGD targeted attack on FeCo-defended xvector-plda model for OSI task. FeCo is randomized, using EOT
 
-  `python attackMain.py -system_type iv -model_file ./model_file/speaker_model_iv -threshold 2.51 -task OSI -defense FeCo -defense_param kmeans raw 0.2 L2 -root ./data -name Spk10_imposter -des ./adver-audio/iv-fgsm -EOT_size 6 -EOT_batch_size 2 -targeted FGSM -epsilon 0.002`
+  `python attackMain.py -threshold 18.72 -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./data -name Spk10_imposter -des ./adver-audio/xv-pgd -task OSI -EOT_size 6 -EOT_batch_size 2 -targeted xv_plda -model_file ./model_file/speaker_model_xv_plda PGD -epsilon 0.002 -max_iter 5 -loss Margin`
+
+  Note: `-defense_flag 1` means we want FeCo to operate at the raw acoustic feature level. 
+  Set `-defense_flag 2` or `-defense_flag 3` for delta or cmvn acoustic feature level. 
 
 ## 1.5 Evaluate Adversarial Examples
 - Example 1: Testing for unadaptive attack
 
-  `python test_attack.py -system_type audionet -model_file ./model_file/QT-512-natural-audionet -root ./adver-audio -name QT-512-audionet-fakebob -defense QT -defense_param 512`
+  `python test_attack.py -root ./adver-audio -name QT-512-audionet-fakebob -defense QT -defense_param 512 -defense_flag 0 audionet_csine -model_file ./model_file/QT-512-natural-audionet `
 - Example 2: Testing for adaptive attack
 
-  `python test_attack.py -system_type iv -model_file ./model_file/speaker_model_iv -threshold 2.51 -defense FeCo -defense_param kmeans raw 0.2 L2 -root ./adver-audio -name iv-fgsm`
+  `python test_attack.py -threshold 18.72 -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./adver-audio -name xv-pgd xv_plda -model_file ./model_file/speaker_model_xv_plda`
 
 In Example 1, the adversarial examples are generated on undefended audionet model, but tested on QT-defended audionet model, so it is **non-adaptive** attack.
 
-In Example 2, the adversarial examples are generated on FeCo-defended iv-plda model using EOT (to overcome the randomness of FeCo), and also tested on FeCo-defended iv-plda model, so it is **adaptive** attack.
+In Example 2, the adversarial examples are generated on FeCo-defended xvector-plda model using EOT (to overcome the randomness of FeCo), and also tested on FeCo-defended xvector-plda model, so it is **adaptive** attack.
 
 By default, targeted attack randomly selects the targeted label. If you want to control the targeted label, you can run `specify_target_label.py` and input the generated target label file to `attackMain.py` and `test_attack.py`.
 
 `test_attack.py` can also be used to test the benign accuracy of systems. Just let `-root` and `-name` point to the benign dataset.
+
+You can also try the combination of different transformation-based defenses, e.g., 
+`-defense QT AT FeCo -defense_param 512 16 "kmeans 0.5 L2" -defense_flag 0 0 1 -defense_order sequential`
+
+where `-defense_order` specifies the combination way (sequential or average).
 
 # 2. Extension
 If you would like to incorporate your attacks/defenses/models/datasets into our official repositor 

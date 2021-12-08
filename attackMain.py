@@ -9,9 +9,13 @@ import pickle
 
 from dataset.Dataset import Dataset
 
-from model.ivector_PLDA import ivector_PLDA
-from model.xvector_PLDA import xvector_PLDA
-from model.AudioNet import AudioNet
+from defense.defense import parser_defense
+
+from model.iv_plda import iv_plda
+from model.xv_plda import xv_plda
+from model.audionet_csine import audionet_csine
+
+from model.defended_model import defended_model
 
 from attack.FGSM import FGSM
 from attack.PGD import PGD
@@ -20,7 +24,6 @@ from attack.CW2 import CW2
 from attack.FAKEBOB import FAKEBOB
 from attack.SirenAttack import SirenAttack
 
-from defense.defense import *
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 bits = 16
@@ -30,41 +33,45 @@ def parse_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-system_type', type=str, required=True, choices=['audionet', 'iv', 'xv'])
-    parser.add_argument('-model_file', type=str, required=True) # spk_model for iv/xv, and ckpt for audionet
+    subparser = parser.add_subparsers(dest='system_type') # either iv (ivector-PLDA) or xv (xvector-PLDA)
+
+    iv_parser = subparser.add_parser("iv_plda")
+    iv_parser.add_argument('-gmm', default='pre-trained-models/iv_plda/final_ubm.txt')
+    iv_parser.add_argument('-extractor', default='pre-trained-models/iv_plda/final_ie.txt')
+    iv_parser.add_argument('-plda', default='pre-trained-models/iv_plda/plda.txt')
+    iv_parser.add_argument('-mean', default='pre-trained-models/iv_plda/mean.vec')
+    iv_parser.add_argument('-transform', default='pre-trained-models/iv_plda/transform.txt')
+    iv_parser.add_argument('-model_file', default='model_file/iv_plda/speaker_model_iv_plda')
+    
+    xv_parser = subparser.add_parser("xv_plda")
+    xv_parser.add_argument('-extractor', default='pre-trained-models/xv_plda/xvecTDNN_origin.ckpt')
+    xv_parser.add_argument('-plda', default='pre-trained-models/xv_plda/plda.txt')
+    xv_parser.add_argument('-mean', default='pre-trained-models/xv_plda/mean.vec')
+    xv_parser.add_argument('-transform', default='pre-trained-models/xv_plda/transform.txt')
+    xv_parser.add_argument('-model_file', default='model_file/xv_plda/speaker_model_xv_plda')
+    
+    audionet_c_parser = subparser.add_parser("audionet_csine")
+    audionet_c_parser.add_argument('-extractor', 
+                default='pre-trained-models/audionet/cnn-natural-model-noise-0-002-50-epoch.pt.tmp8540_ckpt')
+    audionet_c_parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
+
+    # true threshold and threshold estimation
     parser.add_argument('-threshold', type=float, default=None) # for SV/OSI task; real threshold of the model
-    # Recommended: iv-SV: 2.06 iv-OSI: 2.51 xv-SV: 2.25 xv-OSI: 2.62
-
-    # for iv-plda
-    parser.add_argument('-plda_iv', default='./iv_system/plda.txt')
-    parser.add_argument('-mean_iv', default='./iv_system/mean.vec')
-    parser.add_argument('-transform_iv', default='./iv_system/transform.txt')
-    parser.add_argument('-extractor_iv', default='./iv_system/final_ie.txt')
-    parser.add_argument('-gmm', default='./iv_system/final_ubm.txt')
-
-    # for xv-plda
-    parser.add_argument('-plda_xv', default='./xv_system/plda.txt')
-    parser.add_argument('-mean_xv', default='./xv_system/mean.vec')
-    parser.add_argument('-transform_xv', default='./xv_system/transform.txt')
-    parser.add_argument('-extractor_xv', default='./xv_system/xvecTDNN_origin.ckpt')
-
-    # for audionet
-    parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
-
-    # threshold estimation
     parser.add_argument('-threshold_estimated', type=float, default=None) # for SV/OSI task; estimated threshold by FAKEBOB
     parser.add_argument('-thresh_est_wav_path', type=str, nargs='+', default=None) # the audio path used to estimate the threshold, should from imposter (initially rejected)
     parser.add_argument('-thresh_est_step', type=float, default=0.1) # the smaller, the accurate, but the slower
     
     #### add a defense layer in the model
     #### Note that for white-box attack, the defense method needs to be differentiable
-    parser.add_argument('-defense', default=None, choices=Input_Transformation)
-    parser.add_argument('-defense_param', default=None, nargs="+") ### defense method param
+    parser.add_argument('-defense', nargs='+', default=None)
+    parser.add_argument('-defense_param', nargs='+', default=None)
+    parser.add_argument('-defense_flag', nargs='+', default=None, type=int)
+    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])
 
     parser.add_argument('-root', type=str, required=True)
     parser.add_argument('-name', type=str, required=True)
     parser.add_argument('-des', type=str, default=None) # path to store adver audios
-    parser.add_argument('-task', type=str, default='CSI', choices=['CSI', 'SV', 'OSI'])
+    parser.add_argument('-task', type=str, default='CSI', choices=['CSI', 'SV', 'OSI']) # the attack use this to set the loss function
     parser.add_argument('-wav_length', type=int, default=None)
 
     ## common attack parameters
@@ -76,59 +83,62 @@ def parse_args():
     parser.add_argument('-start', type=int, default=0)
     parser.add_argument('-end', type=int, default=-1)
 
-    subparser = parser.add_subparsers(dest='attacker')
+    for system_type_parser in [iv_parser, xv_parser, audionet_c_parser]:
+        
+        subparser = system_type_parser.add_subparsers(dest='attacker')
 
-    fgsm_parser = subparser.add_parser("FGSM")
-    fgsm_parser.add_argument("-epsilon", type=float, default=0.002)
-    fgsm_parser.add_argument('-loss', type=str, choices=['Entropy', 'CW'], default='Entropy')
+        fgsm_parser = subparser.add_parser("FGSM")
+        fgsm_parser.add_argument("-epsilon", type=float, default=0.002)
+        fgsm_parser.add_argument('-loss', type=str, choices=['Entropy', 'Margin'], default='Entropy')
 
-    pgd_parser = subparser.add_parser("PGD")
-    pgd_parser.add_argument('-step_size', type=float, default=0.0004)
-    pgd_parser.add_argument('-epsilon', type=float, default=0.002)
-    pgd_parser.add_argument('-max_iter', type=int, default=10) # PGD-10 default
-    pgd_parser.add_argument('-num_random_init', type=int, default=0)
-    pgd_parser.add_argument('-loss', type=str, choices=['Entropy', 'CW'], default='Entropy')
+        pgd_parser = subparser.add_parser("PGD")
+        pgd_parser.add_argument('-step_size', type=float, default=0.0004)
+        pgd_parser.add_argument('-epsilon', type=float, default=0.002)
+        pgd_parser.add_argument('-max_iter', type=int, default=10) # PGD-10 default
+        pgd_parser.add_argument('-num_random_init', type=int, default=0)
+        pgd_parser.add_argument('-loss', type=str, choices=['Entropy', 'Margin'], default='Entropy')
 
-    cwinf_parser = subparser.add_parser("CWinf")
-    cwinf_parser.add_argument('-step_size', type=float, default=0.001)
-    cwinf_parser.add_argument('-epsilon', type=float, default=0.002)
-    cwinf_parser.add_argument('-max_iter', type=int, default=10) # PGD-10 default
-    cwinf_parser.add_argument('-num_random_init', type=int, default=0)
+        cwinf_parser = subparser.add_parser("CWinf")
+        cwinf_parser.add_argument('-step_size', type=float, default=0.001)
+        cwinf_parser.add_argument('-epsilon', type=float, default=0.002)
+        cwinf_parser.add_argument('-max_iter', type=int, default=10) # PGD-10 default
+        cwinf_parser.add_argument('-num_random_init', type=int, default=0)
 
-    cw2_parser = subparser.add_parser("CW2")
-    cw2_parser.add_argument('-initial_const', type=float, default=1e-3)
-    cw2_parser.add_argument('-binary_search_steps', type=int, default=9)
-    cw2_parser.add_argument('-max_iter', type=int, default=10000)
-    cw2_parser.add_argument('-stop_early', action='store_false', default=True)
-    cw2_parser.add_argument('-stop_early_iter', type=int, default=1000)
-    cw2_parser.add_argument('-lr', type=float, default=1e-2)
-    cw2_parser.add_argument('-confidence', type=float, default=0.)
+        cw2_parser = subparser.add_parser("CW2")
+        cw2_parser.add_argument('-initial_const', type=float, default=1e-3)
+        cw2_parser.add_argument('-binary_search_steps', type=int, default=9)
+        cw2_parser.add_argument('-max_iter', type=int, default=10000)
+        cw2_parser.add_argument('-stop_early', action='store_false', default=True)
+        cw2_parser.add_argument('-stop_early_iter', type=int, default=1000)
+        cw2_parser.add_argument('-lr', type=float, default=1e-2)
+        cw2_parser.add_argument('-confidence', type=float, default=0.)
+        # cw2_parser.add_argument('-dist_loss', default='L2', choices=['L2', 'PMSQE', 'PESQ'])
 
-    fakebob_parser = subparser.add_parser("FAKEBOB")
-    fakebob_parser.add_argument('-confidence', type=float, default=0.)
-    fakebob_parser.add_argument("--epsilon", "-epsilon", default=0.002, type=float)
-    fakebob_parser.add_argument("--max_iter", "-max_iter", default=1000, type=int)
-    fakebob_parser.add_argument("--max_lr", "-max_lr", default=0.001, type=float)
-    fakebob_parser.add_argument("--min_lr", "-min_lr", default=1e-6, type=float)
-    fakebob_parser.add_argument("--samples_per_draw", "-samples", default=50, type=int)
-    fakebob_parser.add_argument("--samples_batch", "-samples_batch", default=50, type=int)
-    fakebob_parser.add_argument("--sigma", "-sigma", default=0.001, type=float)
-    fakebob_parser.add_argument("--momentum", "-momentum", default=0.9, type=float)
-    fakebob_parser.add_argument("--plateau_length", "-plateau_length", default=5, type=int)
-    fakebob_parser.add_argument("--plateau_drop", "-plateau_drop", default=2.0, type=float)
-    fakebob_parser.add_argument("--stop_early", "-stop_early", action='store_false', default=True)
-    fakebob_parser.add_argument("--stop_early_iter", "-stop_early_iter", type=int, default=100)
+        fakebob_parser = subparser.add_parser("FAKEBOB")
+        fakebob_parser.add_argument('-confidence', type=float, default=0.)
+        fakebob_parser.add_argument("--epsilon", "-epsilon", default=0.002, type=float)
+        fakebob_parser.add_argument("--max_iter", "-max_iter", default=1000, type=int)
+        fakebob_parser.add_argument("--max_lr", "-max_lr", default=0.001, type=float)
+        fakebob_parser.add_argument("--min_lr", "-min_lr", default=1e-6, type=float)
+        fakebob_parser.add_argument("--samples_per_draw", "-samples", default=50, type=int)
+        fakebob_parser.add_argument("--samples_batch", "-samples_batch", default=50, type=int)
+        fakebob_parser.add_argument("--sigma", "-sigma", default=0.001, type=float)
+        fakebob_parser.add_argument("--momentum", "-momentum", default=0.9, type=float)
+        fakebob_parser.add_argument("--plateau_length", "-plateau_length", default=5, type=int)
+        fakebob_parser.add_argument("--plateau_drop", "-plateau_drop", default=2.0, type=float)
+        fakebob_parser.add_argument("--stop_early", "-stop_early", action='store_false', default=True)
+        fakebob_parser.add_argument("--stop_early_iter", "-stop_early_iter", type=int, default=100)
 
-    siren_parser = subparser.add_parser("SirenAttack")
-    siren_parser.add_argument('-confidence', type=float, default=0.)
-    siren_parser.add_argument("-epsilon", default=0.002, type=float)
-    siren_parser.add_argument("-max_epoch", default=30, type=int)
-    siren_parser.add_argument("-max_iter", default=300, type=int)
-    siren_parser.add_argument("-c1", type=float, default=1.4961)
-    siren_parser.add_argument("-c2", type=float, default=1.4961)
-    siren_parser.add_argument("-n_particles", default=50, type=int)
-    siren_parser.add_argument("-w_init", type=float, default=0.9)
-    siren_parser.add_argument("-w_end", type=float, default=0.1)
+        siren_parser = subparser.add_parser("SirenAttack")
+        siren_parser.add_argument('-confidence', type=float, default=0.)
+        siren_parser.add_argument("-epsilon", default=0.002, type=float)
+        siren_parser.add_argument("-max_epoch", default=30, type=int)
+        siren_parser.add_argument("-max_iter", default=300, type=int)
+        siren_parser.add_argument("-c1", type=float, default=1.4961)
+        siren_parser.add_argument("-c2", type=float, default=1.4961)
+        siren_parser.add_argument("-n_particles", default=50, type=int)
+        siren_parser.add_argument("-w_init", type=float, default=0.9)
+        siren_parser.add_argument("-w_end", type=float, default=0.1)
 
     args = parser.parse_args()
     return args
@@ -145,30 +155,19 @@ def save_audio(advers, names, root, fs=16000):
 
 def main(args):
 
-    # load pretrained model
-    defense_param = parser_defense_param(args.defense, args.defense_param)
-    model = None
-    spk_ids = None
-    dataset = None
-    if args.system_type == 'audionet':
-        model = AudioNet(args.label_encoder,
-                        transform_layer=args.defense, 
-                        transform_param=defense_param)
-        # state_dict = torch.load(args.model_file, map_location=device).state_dict()
-        state_dict = torch.load(args.model_file, map_location=device)
-        model.load_state_dict(state_dict)
-        model.eval().to(device)
-    elif args.system_type == 'iv':
-        model = ivector_PLDA(args.model_file, args.gmm, args.extractor_iv, 
-                args.plda_iv, args.mean_iv, args.transform_iv, device=device, threshold=args.threshold,
-                transform_layer=args.defense, transform_param=defense_param)
-    elif args.system_type == 'xv': 
-        model = xvector_PLDA(args.model_file, args.extractor_xv, args.plda_xv, args.mean_xv, args.transform_xv, 
-                device=device, threshold=args.threshold,
-                transform_layer=args.defense, transform_param=defense_param)
+    # set up model
+    if args.system_type == 'iv_plda':
+        base_model = iv_plda(args.gmm, args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file, threshold=args.threshold)
+    elif args.system_type == 'xv_plda':
+        base_model = xv_plda(args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file, threshold=args.threshold)
+    elif args.system_type == 'audionet_csine':
+        base_model = audionet_csine(args.extractor, label_encoder=args.label_encoder, device=device)
     else:
-        raise NotImplementedError('Not Supported Model Type')
-    spk_ids = model.spk_ids
+        raise NotImplementedError('Unsupported System Type')
+    
+    defense, defense_name = parser_defense(args.defense, args.defense_param, args.defense_flag, args.defense_order)
+    model = defended_model(base_model=base_model, defense=defense, order=args.defense_order)
+    spk_ids = base_model.spk_ids
     
     wav_length = None if args.batch_size == 1 else args.wav_length
     # dataset = getattr(sys.modules[__name__], args.name)(spk_ids, root, return_file_name=True, wav_length=wav_length)
@@ -226,7 +225,8 @@ def main(args):
     elif args.attacker == 'CW2':
         attacker = CW2(model, task=args.task, initial_const=args.initial_const, binary_search_steps=args.binary_search_steps,
                             max_iter=args.max_iter, stop_early=args.stop_early, stop_early_iter=args.stop_early_iter, lr=args.lr,
-                            targeted=args.targeted, confidence=args.confidence, verbose=1, batch_size=args.batch_size)
+                            targeted=args.targeted, confidence=args.confidence, verbose=1, batch_size=args.batch_size
+                            )
     elif args.attacker == 'FAKEBOB':
         attacker = FAKEBOB(model, threshold=args.threshold_estimated, task=args.task, targeted=args.targeted, confidence=args.confidence,
                         epsilon=args.epsilon, max_iter=args.max_iter, max_lr=args.max_lr,
@@ -250,13 +250,12 @@ def main(args):
     attacker_param = None
     if args.attacker == 'FGSM':
         attacker_param = [args.epsilon, args.EOT_size]
-    elif args.attacker == 'PGD': 
-        attacker_param = [args.max_iter, args.epsilon, args.num_random_init, args.EOT_size]
+    elif args.attacker == 'PGD':
+        attacker_param = [args.max_iter, args.epsilon, args.step_size, args.num_random_init, args.EOT_size]
     elif args.attacker == 'CWinf':
         attacker_param = [args.max_iter, args.epsilon, args.num_random_init, args.EOT_size]
-    elif args.attacker == 'CW2': 
-        # attacker_param = [args.confidence, args.max_iter, args.abort_early_iter] 
-        attacker_param = [args.confidence, args.max_iter] 
+    elif args.attacker == 'CW2':
+        attacker_param = [args.initial_const, args.confidence, args.max_iter, args.stop_early_iter] 
     elif args.attacker == 'FAKEBOB':
         attacker_param = [args.epsilon, args.confidence, args.samples_per_draw, args.max_iter, args.stop_early_iter]
     elif args.attacker == 'SirenAttack':
@@ -264,14 +263,17 @@ def main(args):
     else:
         raise NotImplementedError('Not Supported Attack Algorithm')
 
-    defense_or_preprocess = args.defense
-    defense_or_preprocess_param = args.defense_param
-    adver_dir = "./adver-audio/{}-{}-{}/{}-{}/{}/{}-{}".format(args.system_type, args.task, args.name,
-                defense_or_preprocess, defense_or_preprocess_param, args.attacker, 
+
+    adver_dir = "./adver-audio/{}-{}-{}/{}/{}/{}-{}".format(args.system_type, args.task, args.name,
+                defense_name, args.attacker, 
+                args.attacker, attacker_param)
+    adver_dir_wav = "./adver-audio-wav/{}-{}-{}/{}/{}/{}-{}".format(args.system_type, args.task, args.name,
+                defense_name, args.attacker, 
                 args.attacker, attacker_param)
     if args.des is not None:
+        assert args.des is None
         adver_dir = args.des
-    print(adver_dir),
+    print(adver_dir, adver_dir_wav),
 
     # load target label
     name2target = {}
@@ -288,6 +290,12 @@ def main(args):
     for index, (origin, true, file_name) in enumerate(loader):
         if index not in range(start, end):
             continue
+
+        des_path = os.path.join(adver_dir, file_name[0].split('-')[0], file_name[0] + '.wav')
+        if os.path.exists(des_path):
+            print('*' * 40, index, file_name[0], 'Exists, SKip', '*' * 40)
+            continue
+
         origin = origin.to(device)
         true = true.to(device)
         if args.targeted:
@@ -304,8 +312,14 @@ def main(args):
                     target[ii] = np.random.choice(candidate_target_labels)
             true = target
         print('*' * 10, index, '*' * 10)
-        adver, success = attacker.attack(origin, true)
-        save_audio(adver, file_name, adver_dir)
+        try:
+            adver, success = attacker.attack(origin, true)
+        except (RuntimeError, TypeError, NameError):
+            print('*' * 50, 'Error go to next','*' * 50)
+            continue
+        # adver, success = attacker.attack(origin, true)
+        # save_audio(adver, file_name, adver_dir)
+        save_audio(adver, file_name, adver_dir, adver_dir_wav)
         success_cnt += sum(success)
     
     total_cnt = len(dataset)

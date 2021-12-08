@@ -4,6 +4,9 @@ Part of the code is drawn from
 https://github.com/lixucuhk/adversarial-attack-on-GMM-i-vector-based-speaker-verification-systems
 Paper:
 Adversarial Attacks on GMM i-vector based Speaker Verification Systems
+
+I have made some modifications to speecd up the compuation by replacing naive loop (Extractivector_loop) 
+with matrix computation (Extractivector)
 '''
 
 import torch
@@ -86,6 +89,11 @@ class ivectorExtractor(object):
 		ivector[0] -= self.offset
 
 		return ivector, L_inv, linear
+
+	
+	def Extract(self, zeroth_stats, first_stats): 
+		return self.Extractivector(zeroth_stats, first_stats)
+
 
 	def Extractivector(self, zeroth_stats, first_stats): 
 		L = torch.eye(self.ivector_dim, device=self.device)

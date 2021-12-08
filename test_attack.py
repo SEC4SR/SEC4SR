@@ -6,13 +6,16 @@ import numpy as np
 
 from metric.metric import get_all_metric
 
-from model.ivector_PLDA import ivector_PLDA
-from model.xvector_PLDA import xvector_PLDA
-from model.AudioNet import AudioNet
+from defense.defense import parser_defense
+
+from model.iv_plda import iv_plda
+from model.xv_plda import xv_plda
+from model.audionet_csine import audionet_csine
+
+from model.defended_model import defended_model
 
 from dataset.Dataset import Dataset
 
-from defense.defense import *
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 bits = 16
@@ -22,30 +25,36 @@ def parse_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-system_type', type=str, required=True, choices=['audionet', 'iv', 'xv'])
-    parser.add_argument('-model_file', type=str, required=True) # spk_model for iv/xv, and ckpt for audionet
-    parser.add_argument('-threshold', type=float, default=None) # for SV/OSI task
+    subparser = parser.add_subparsers(dest='system_type') # either iv (ivector-PLDA) or xv (xvector-PLDA)
+
+    iv_parser = subparser.add_parser("iv_plda")
+    iv_parser.add_argument('-gmm', default='pre-trained-models/iv_plda/final_ubm.txt')
+    iv_parser.add_argument('-extractor', default='pre-trained-models/iv_plda/final_ie.txt')
+    iv_parser.add_argument('-plda', default='pre-trained-models/iv_plda/plda.txt')
+    iv_parser.add_argument('-mean', default='pre-trained-models/iv_plda/mean.vec')
+    iv_parser.add_argument('-transform', default='pre-trained-models/iv_plda/transform.txt')
+    iv_parser.add_argument('-model_file', default='model_file/iv_plda/speaker_model_iv_plda')
     
-    # for iv-plda
-    parser.add_argument('-plda_iv', default='./iv_system/plda.txt')
-    parser.add_argument('-mean_iv', default='./iv_system/mean.vec')
-    parser.add_argument('-transform_iv', default='./iv_system/transform.txt')
-    parser.add_argument('-extractor_iv', default='./iv_system/final_ie.txt')
-    parser.add_argument('-gmm', default='./iv_system/final_ubm.txt')
+    xv_parser = subparser.add_parser("xv_plda")
+    xv_parser.add_argument('-extractor', default='pre-trained-models/xv_plda/xvecTDNN_origin.ckpt')
+    xv_parser.add_argument('-plda', default='pre-trained-models/xv_plda/plda.txt')
+    xv_parser.add_argument('-mean', default='pre-trained-models/xv_plda/mean.vec')
+    xv_parser.add_argument('-transform', default='pre-trained-models/xv_plda/transform.txt')
+    xv_parser.add_argument('-model_file', default='model_file/xv_plda/speaker_model_xv_plda')
+    
+    audionet_c_parser = subparser.add_parser("audionet_csine")
+    audionet_c_parser.add_argument('-extractor', 
+                default='pre-trained-models/audionet/cnn-natural-model-noise-0-002-50-epoch.pt.tmp8540_ckpt')
+    audionet_c_parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
 
-    # for xv-plda
-    parser.add_argument('-plda_xv', default='./xv_system/plda.txt')
-    parser.add_argument('-mean_xv', default='./xv_system/mean.vec')
-    parser.add_argument('-transform_xv', default='./xv_system/transform.txt')
-    parser.add_argument('-extractor_xv', default='./xv_system/xvecTDNN_origin.ckpt')
-
-    # for audionet
-    parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
+    parser.add_argument('-threshold', type=float, default=None) # for SV/OSI task
 
     #### add a defense layer in the model
     #### Note that for white-box attack, the defense method needs to be differentiable
-    parser.add_argument('-defense', default=None, choices=Input_Transformation)
-    parser.add_argument('-defense_param', default=None, nargs="+") ### defense method param
+    parser.add_argument('-defense', nargs='+', default=None)
+    parser.add_argument('-defense_param', nargs='+', default=None)
+    parser.add_argument('-defense_flag', nargs='+', default=None, type=int)
+    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])
 
     parser.add_argument('-root', type=str, required=True)
     parser.add_argument('-name', type=str, required=True)
@@ -64,30 +73,19 @@ def parse_args():
 
 def main(args):
 
-    # load pretrained model
-    defense_param = parser_defense_param(args.defense, args.defense_param)
-    model = None
-    spk_ids = None
-    dataset = None
-    if args.system_type == 'audionet':
-        model = AudioNet(args.label_encoder,
-                        transform_layer=args.defense, 
-                        transform_param=defense_param)
-        # state_dict = torch.load(args.model_file, map_location=device).state_dict()
-        state_dict = torch.load(args.model_file, map_location=device)
-        model.load_state_dict(state_dict)
-        model.eval().to(device)
-    elif args.system_type == 'iv':
-        model = ivector_PLDA(args.model_file, args.gmm, args.extractor_iv, 
-                args.plda_iv, args.mean_iv, args.transform_iv, device=device, threshold=args.threshold,
-                transform_layer=args.defense, transform_param=defense_param)
-    elif args.system_type == 'xv':
-        model = xvector_PLDA(args.model_file, args.extractor_xv, args.plda_xv, args.mean_xv, args.transform_xv, 
-                device=device, threshold=args.threshold,
-                transform_layer=args.defense, transform_param=defense_param)
+    # set up model
+    if args.system_type == 'iv_plda':
+        base_model = iv_plda(args.gmm, args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file, threshold=args.threshold)
+    elif args.system_type == 'xv_plda':
+        base_model = xv_plda(args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file, threshold=args.threshold)
+    elif args.system_type == 'audionet_csine':
+        base_model = audionet_csine(args.extractor, label_encoder=args.label_encoder, device=device)
     else:
-        raise NotImplementedError('Not Supported Model Type')
-    spk_ids = model.spk_ids
+        raise NotImplementedError('Unsupported System Type')
+    
+    defense, defense_name = parser_defense(args.defense, args.defense_param, args.defense_flag, args.defense_order)
+    model = defended_model(base_model=base_model, defense=defense, order=args.defense_order)
+    spk_ids = base_model.spk_ids
     
     wav_length = None if args.batch_size == 1 else args.wav_length
     # If you want to test the distance between ori and adv voices, you must make sure
@@ -161,7 +159,8 @@ def main(args):
         print('Targeted Attack Success Rate:', target_ASR)
     if args.root_ori is not None and args.name_ori is not None:
         imper = np.mean(np.array(imper), axis=0)
-        print('L2, L0, L1, SNR, PESQ, STOI', imper)
+        # print('L2, L0, L1, Linf, SNR, PESQ, STOI', imper)
+        print('L2, SNR, PESQ: {:.3f} {:.2f} {:.2f}'.format(imper[0], imper[4], imper[5]))
     
 
 if __name__ == "__main__":

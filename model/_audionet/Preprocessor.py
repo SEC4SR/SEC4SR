@@ -1,4 +1,3 @@
-
 ''' Code drawn from
 https://github.com/usc-sail/gard-adversarial-speaker-id
 Paper: 
@@ -103,7 +102,7 @@ class Preprocessor(nn.Module):
             n_fft=hp.n_fft,
             hop_length=hp.hop_length,
             win_length=hp.win_length,
-            window=torch.hann_window(hp.win_length))
+            window=torch.hann_window(hp.win_length).to(wav.device)) 
 
         # can't use abs because `torch` use 2 channels to represent complex number
         mag_spec = _square(spec)

@@ -1,4 +1,3 @@
-
 from attack.Attack import Attack
 from attack.utils import resolve_loss
 from adaptive_attack.NES import NES
@@ -39,7 +38,7 @@ class FAKEBOB(Attack):
         self.EOT_batch_size = EOT_batch_size
         self.verbose = verbose
 
-        # loss_name = 'CW'
+        # loss_name = 'Margin'
         # self.loss, self.grad_sign = resolve_loss(loss_name, targeted, clip_max=False)
 
     def attack_batch(self, x_batch, y_batch, lower, upper, batch_id):
@@ -99,7 +98,8 @@ class FAKEBOB(Attack):
                     adver_x.data = torch.min(torch.max(adver_x.data, lower), upper)
 
                     if self.stop_early and iter % self.stop_early_iter == 0:
-                        converge_loss = np.array(prev_loss) * 0.9999 - np.array(loss)
+                        loss_np = np.array([l.cpu() for l in loss])
+                        converge_loss = np.array(prev_loss) * 0.9999 - loss_np
                         adver_x, y_batch, prev_grad, grad, lower, upper, \
                         consider_index, \
                         last_ls, lr, prev_loss, loss = self.delete_found(converge_loss, adver_x, y_batch, prev_grad, grad, lower, upper, 
@@ -107,7 +107,7 @@ class FAKEBOB(Attack):
                         if adver_x is None: # all converage
                             break
 
-                        prev_loss = loss
+                        prev_loss = loss_np
             
             success = [False] * n_audios
             for kk, best_l in enumerate(best_loss):
@@ -172,7 +172,7 @@ class FAKEBOB(Attack):
         if self.task in ['SV', 'OSI'] and self.threshold is None:
             raise NotImplementedError('You are running black box attack for {} task, \
                         but the threshold not specified. Consider calling estimate threshold')
-        self.loss, self.grad_sign = resolve_loss('CW', self.targeted, self.confidence, self.task, self.threshold, False)
+        self.loss, self.grad_sign = resolve_loss('Margin', self.targeted, self.confidence, self.task, self.threshold, False)
         self.EOT_wrapper = EOT(self.model, self.loss, self.EOT_size, self.EOT_batch_size, False)
 
         lower = -1
@@ -227,7 +227,7 @@ class FAKEBOB(Attack):
         n_iters = 0
 
         while True:
-            self.loss, self.grad_sign = resolve_loss('CW', False, 0., self.task, threshold, False)
+            self.loss, self.grad_sign = resolve_loss('Margin', False, 0., self.task, threshold, False)
             self.EOT_wrapper = EOT(self.model, self.loss, self.EOT_size, self.EOT_batch_size, False)
 
             iter_inner = 0

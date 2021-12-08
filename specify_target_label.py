@@ -6,9 +6,12 @@ from torch.utils.data.dataloader import DataLoader
 
 from defense.defense import *
 
-from model.xvector_PLDA import xvector_PLDA
-from model.ivector_PLDA import ivector_PLDA
-from model.AudioNet import AudioNet
+from model.iv_plda import iv_plda
+from model.xv_plda import xv_plda
+from model.audionet_csine import audionet_csine
+
+from model.defended_model import defended_model
+
 
 from dataset.Dataset import Dataset
 
@@ -18,30 +21,19 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def main(args):
     
     #Step1: load the model
-    defense_param = parser_defense_param(args.defense, args.defense_param)
-    if args.task != 'SV' and args.task != 'OSI':
-        args.threshold = None # threshold is meaningless for CSI and CSI-NE
-    if args.system_type == 'iv':
-        model = ivector_PLDA(args.spk_model, args.gmm, args.extractor, 
-                args.plda, args.mean, args.transform, device=device, threshold=args.threshold,
-                transform_layer=args.defense, transform_param=defense_param)
-        spk_ids = model.spk_ids
-    elif args.system_type == 'xv':
-        model = xvector_PLDA(args.spk_model, args.extractor, args.plda, args.mean, args.transform, 
-                device=device, threshold=args.threshold,
-                transform_layer=args.defense, transform_param=defense_param)
-        spk_ids = model.spk_ids
-    elif args.system_type == 'audionet':
-        model = AudioNet(args.label_encoder,
-                        transform_layer=args.defense, 
-                        transform_param=defense_param)
-        # state_dict = torch.load(args.model_file, map_location=device).state_dict()
-        state_dict = torch.load(args.model_file, map_location=device)
-        model.load_state_dict(state_dict)
-        model.eval().to(device)
+     # set up model
+    if args.system_type == 'iv_plda':
+        base_model = iv_plda(args.gmm, args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file, threshold=args.threshold)
+    elif args.system_type == 'xv_plda':
+        base_model = xv_plda(args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file, threshold=args.threshold)
+    elif args.system_type == 'audionet_csine':
+        base_model = audionet_csine(args.extractor, label_encoder=args.label_encoder, device=device)
     else:
         raise NotImplementedError('Unsupported System Type')
-    spk_ids = model.spk_ids
+    
+    defense, defense_name = parser_defense(args.defense, args.defense_param, args.defense_flag, args.defense_order)
+    model = defended_model(base_model=base_model, defense=defense, order=args.defense_order)
+    spk_ids = base_model.spk_ids
 
     possible_decisions = list(range(len(spk_ids)))
     if args.task == 'SV' or args.task == 'OSI':
@@ -84,8 +76,8 @@ def main(args):
             print(index, file_name[0], scores, true, decision, target_label) 
     # Step4: save
     save_path = args.save_path if args.save_path else \
-        '{}-{}-{}-{}-{}-{}.target_label'.format(args.system_type, args.task, 
-        args.defense, args.defense_param, args.name, args.hardest)
+        '{}-{}-{}-{}-{}.target_label'.format(args.system_type, args.task, 
+        defense_name, args.name, args.hardest)
     with open(save_path, 'wb') as writer:
         pickle.dump(name2target, writer, -1)
     print('save file name and target label pair in {}'.format(save_path))
@@ -97,9 +89,6 @@ if __name__ == '__main__':
 
     parser.add_argument('-root', required=True) # the directory where the dataset locates
     parser.add_argument('-name', required=True) # the dataset name we specify target label for
-    
-    parser.add_argument('-defense', default=None, choices=(Input_Transformation + [None]))
-    parser.add_argument('-defense_param', default=None, nargs="+") ### defense method param
 
     parser.add_argument('-save_path', default=None) # the path to store the file name and target label pair
 
@@ -110,29 +99,34 @@ if __name__ == '__main__':
 
     subparser = parser.add_subparsers(dest='system_type') # either iv (ivector-PLDA) or xv (xvector-PLDA)
 
-    iv_parser = subparser.add_parser("iv")
-    iv_parser.add_argument('-model_file', required=True) # speaker_model_iv or speaker_model_iv_{ID}
-    iv_parser.add_argument('-task', default='CSI', choices=['CSI', 'SV', 'OSI'])
-    iv_parser.add_argument('-threshold', default=None, type=float)
-    iv_parser.add_argument('-plda', default='./iv_system/plda.txt')
-    iv_parser.add_argument('-mean', default='./iv_system/mean.vec')
-    iv_parser.add_argument('-transform', default='./iv_system/transform.txt')
-    iv_parser.add_argument('-extractor', default='./iv_system/final_ie.txt')
-    iv_parser.add_argument('-gmm', default='./iv_system/final_ubm.txt')
+    iv_parser = subparser.add_parser("iv_plda")
+    iv_parser.add_argument('-gmm', default='pre-trained-models/iv_plda/final_ubm.txt')
+    iv_parser.add_argument('-extractor', default='pre-trained-models/iv_plda/final_ie.txt')
+    iv_parser.add_argument('-plda', default='pre-trained-models/iv_plda/plda.txt')
+    iv_parser.add_argument('-mean', default='pre-trained-models/iv_plda/mean.vec')
+    iv_parser.add_argument('-transform', default='pre-trained-models/iv_plda/transform.txt')
+    iv_parser.add_argument('-model_file', default='model_file/iv_plda/speaker_model_iv_plda')
+    
+    xv_parser = subparser.add_parser("xv_plda")
+    xv_parser.add_argument('-extractor', default='pre-trained-models/xv_plda/xvecTDNN_origin.ckpt')
+    xv_parser.add_argument('-plda', default='pre-trained-models/xv_plda/plda.txt')
+    xv_parser.add_argument('-mean', default='pre-trained-models/xv_plda/mean.vec')
+    xv_parser.add_argument('-transform', default='pre-trained-models/xv_plda/transform.txt')
+    xv_parser.add_argument('-model_file', default='model_file/xv_plda/speaker_model_xv_plda')
+    
+    audionet_c_parser = subparser.add_parser("audionet_csine")
+    audionet_c_parser.add_argument('-extractor', 
+                default='pre-trained-models/audionet/cnn-natural-model-noise-0-002-50-epoch.pt.tmp8540_ckpt')
+    audionet_c_parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
 
-    xv_parser = subparser.add_parser("xv")
-    xv_parser.add_argument('-model_file', required=True) # speaker_model_xv or speaker_model_xv_{ID}
-    xv_parser.add_argument('-task', default='CSI', choices=['CSI', 'SV', 'OSI'])
-    xv_parser.add_argument('-threshold', default=None, type=float)
-    xv_parser.add_argument('-plda', default='./xv_system/plda.txt')
-    xv_parser.add_argument('-mean', default='./xv_system/mean.vec')
-    xv_parser.add_argument('-transform', default='./xv_system/transform.txt')
-    xv_parser.add_argument('-extractor', default='./xv_system/xvecTDNN_origin.ckpt')
+    parser.add_argument('-threshold', type=float, default=None) # for SV/OSI task
+    parser.add_argument('-task', type=str, default='CSI', choices=['CSI', 'SV', 'OSI'])
 
-    audionet_parser = subparser.add_parser("audionet")
-    audionet_parser.add_argument('-model_file', required=True) # ckpt of pre-trained model 
-    audionet_parser.add_argument('-task', default='CSI', choices=['CSI']) # CSI means CSI-NE here!
-    audionet_parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
+    #### Note that for white-box attack, the defense method needs to be differentiable
+    parser.add_argument('-defense', nargs='+', default=None)
+    parser.add_argument('-defense_param', nargs='+', default=None)
+    parser.add_argument('-defense_flag', nargs='+', default=None, type=int)
+    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])    
 
     args = parser.parse_args()
     main(args)

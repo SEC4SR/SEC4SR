@@ -1,4 +1,9 @@
 
+'''
+The code is drawn from 
+https://github.com/manojpamk/pytorch_xvectors
+'''
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
