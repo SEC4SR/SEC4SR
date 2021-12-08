@@ -27,7 +27,7 @@ class FullGMM(object):
 			line = rdfile.readline()
 			while line != '':
 				if '<GCONSTS>' in line:
-					print('processing <GCONSTS>')
+					# print('processing <GCONSTS>')
 					gconsts = line.split()[2:-1]
 					self.num_gaussians = len(gconsts)
 					for i in range(self.num_gaussians):
@@ -35,7 +35,7 @@ class FullGMM(object):
 					self.gconsts = torch.tensor(gconsts, device=self.device)
 					line = rdfile.readline()
 				elif '<WEIGHTS>' in line:
-					print('processing <WEIGHTS>')
+					# print('processing <WEIGHTS>')
 					weights = line.split()[2:-1]
 					# if len(weights) != self.num_gaussians:
 					# 	print('Dimension does not match between weights and gconsts.')
@@ -45,7 +45,7 @@ class FullGMM(object):
 					self.weights = torch.tensor(weights, device=self.device)
 					line = rdfile.readline()
 				elif '<MEANS_INVCOVARS>' in line:
-					print('processing <MEANS_INVCOVARS>')
+					# print('processing <MEANS_INVCOVARS>')
 					line = rdfile.readline()
 					means_invcovars = []
 					for i in range(self.num_gaussians):
@@ -56,9 +56,9 @@ class FullGMM(object):
 						line = rdfile.readline()
 					self.dim = len(data)
 					self.means_invcovars = torch.tensor(means_invcovars, device=self.device)            # (self.num_gaussians, self.dim)
-					print(self.means_invcovars.size())
+					# print(self.means_invcovars.size())
 				elif '<INV_COVARS>' in line:
-					print('processing <INV_COVARS>')
+					# print('processing <INV_COVARS>')
 					self.invcovars = torch.zeros(self.num_gaussians, self.dim, self.dim, device=self.device)
 					for i in range(self.num_gaussians):
 						line = rdfile.readline()
@@ -76,10 +76,10 @@ class FullGMM(object):
 		self.Means() # (self.num_gaussians, self.dim)
 
 	def Means(self):
-		print('processing <Means>')
+		# print('processing <Means>')
 		self.means = torch.zeros(self.num_gaussians, self.dim, device=self.device)
 		self.means = torch.matmul(torch.inverse(self.invcovars), self.means_invcovars.unsqueeze(-1)).squeeze(-1)
-		print(self.means.size())
+		# print(self.means.size())
 
 
 	def SymmetricMatrix(self, matrix):
