@@ -5,7 +5,7 @@ https://github.com/lixucuhk/adversarial-attack-on-GMM-i-vector-based-speaker-ver
 Paper:
 Adversarial Attacks on GMM i-vector based Speaker Verification Systems
 
-I have made some modifications to speecd up the compuation by replacing naive loop (Extractivector_loop) 
+I have made some modifications to speed up the compuation by replacing naive loop (Extractivector_loop) 
 with matrix computation (Extractivector)
 '''
 
