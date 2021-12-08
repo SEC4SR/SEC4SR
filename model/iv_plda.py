@@ -407,7 +407,7 @@ class iv_plda(nn.Module):
         return self.plda.Transform(emb, num_utt, simple_length_norm, normalize_length)
 
     
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%% Deprecated  Deprecate Deprecate Deprecate %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%% Deprecated  Deprecated Deprecated Deprecated %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # def forward(self, audios, return_emb=False, wav=0, enroll_embs=None):
     #     """
     #         audios: (batch, 1, T)

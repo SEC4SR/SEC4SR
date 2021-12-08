@@ -168,7 +168,7 @@ class xv_plda(iv_plda):
         return batch_emb
 
     
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%% Deprecated  Deprecate Deprecate Deprecate %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%% Deprecated  Deprecated Deprecated Deprecated %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # def score(self, audios, enroll_ivectors):
     #     """
     #     """
