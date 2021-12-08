@@ -267,13 +267,9 @@ def main(args):
     adver_dir = "./adver-audio/{}-{}-{}/{}/{}/{}-{}".format(args.system_type, args.task, args.name,
                 defense_name, args.attacker, 
                 args.attacker, attacker_param)
-    adver_dir_wav = "./adver-audio-wav/{}-{}-{}/{}/{}/{}-{}".format(args.system_type, args.task, args.name,
-                defense_name, args.attacker, 
-                args.attacker, attacker_param)
     if args.des is not None:
-        assert args.des is None
         adver_dir = args.des
-    print(adver_dir, adver_dir_wav),
+    print(adver_dir),
 
     # load target label
     name2target = {}
@@ -312,14 +308,8 @@ def main(args):
                     target[ii] = np.random.choice(candidate_target_labels)
             true = target
         print('*' * 10, index, '*' * 10)
-        try:
-            adver, success = attacker.attack(origin, true)
-        except (RuntimeError, TypeError, NameError):
-            print('*' * 50, 'Error go to next','*' * 50)
-            continue
-        # adver, success = attacker.attack(origin, true)
-        # save_audio(adver, file_name, adver_dir)
-        save_audio(adver, file_name, adver_dir, adver_dir_wav)
+        adver, success = attacker.attack(origin, true)
+        save_audio(adver, file_name, adver_dir)
         success_cnt += sum(success)
     
     total_cnt = len(dataset)
