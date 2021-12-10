@@ -185,9 +185,10 @@ def kmeans(feat, param=0.5, other_param="L2", force=True):
         _, cluster_ids = kmeans_cuda(x, k, verbosity=0, device=get_device(device), yinyang_t=0., metric=distance)
     else: 
         # When no GPU or using cosine distance, use another version of kmeans algo
+        # Although 'kmeans_pytorch' can also run on GPU, it is slower than 'kmeans_cuda'
         distance_ = 'euclidean' if distance == 'L2' else 'cosine' # kmeans_pytorch takes different distance name
         # cluster_ids, _ = kmeans_pytorch(feat, k, distance=distance_, tqdm_flag=False, device=device)
-        cluster_ids, _ = kmeans_pytorch(feat, k, distance=distance_, device=device) # will display lots of useless log TODO: diable the log
+        cluster_ids, _ = kmeans_pytorch(feat, k, distance=distance_, device=device) # will display lots of useless log TODO: disable the log by adding a parameter 'tqdm_flag'
         cluster_ids = cluster_ids.numpy()
 
     ## tricky way to make 'FeCo' differentiable ##
