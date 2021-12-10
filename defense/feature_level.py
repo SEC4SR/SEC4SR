@@ -40,7 +40,6 @@ def FEATURE_COMPRESSION(feat, method='kmeans', param=0.5, other_param='L2'):
     for i, x in enumerate(feat):
         y = cl_m(x)
         y = y.unsqueeze(0)
-        print(i, y.shape)
         if i == 0:
             compressed_feat = y
         else:
@@ -187,7 +186,8 @@ def kmeans(feat, param=0.5, other_param="L2", force=True):
     else: 
         # When no GPU or using cosine distance, use another version of kmeans algo
         distance_ = 'euclidean' if distance == 'L2' else 'cosine' # kmeans_pytorch takes different distance name
-        cluster_ids, _ = kmeans_pytorch(feat, k, distance=distance_, tqdm_flag=False, device=device)
+        # cluster_ids, _ = kmeans_pytorch(feat, k, distance=distance_, tqdm_flag=False, device=device)
+        cluster_ids, _ = kmeans_pytorch(feat, k, distance=distance_, device=device) # will display lots of useless log TODO: diable the log
         cluster_ids = cluster_ids.numpy()
 
     ## tricky way to make 'FeCo' differentiable ##
