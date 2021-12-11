@@ -41,7 +41,10 @@ class defended_model(nn.Module):
 
     
     def process_sequential(self, x):
-
+        '''
+        x: wav with shape [B, 1, T]
+        return: the final type of input to the base model, e.g., cmvn_feat for iv_plda/xv_plda and raw_feat for audionet_csine
+        '''
         if self.defense is not None:
             for flag in sorted(list(self.flag2defense.keys())): # sorted is important here
                 if flag == 0:
@@ -60,7 +63,10 @@ class defended_model(nn.Module):
 
 
     def embedding(self, x):
-
+        '''
+        x: wav with shape [B, 1, T]
+        return the same thing as the base model
+        '''
         if self.defense is not None:
             if self.order == sequential:
                 xx = self.process_sequential(x)
@@ -87,7 +93,10 @@ class defended_model(nn.Module):
             
 
     def forward(self, x, return_emb=False, enroll_embs=None):
-        
+        '''
+        x: wav with shape [B, 1, T]
+        return the same thing as the base model
+        '''
         if self.defense is not None:
             if self.order == sequential:
                 xx = self.process_sequential(x)
@@ -117,7 +126,10 @@ class defended_model(nn.Module):
 
     
     def score(self, x, enroll_embs=None):
-
+        '''
+        x: wav with shape [B, 1, T]
+        return the same thing as the base model
+        '''
         if self.defense is not None:
             if self.order == sequential:
                 xx = self.process_sequential(x)
@@ -143,6 +155,10 @@ class defended_model(nn.Module):
     
 
     def make_decision(self, x, enroll_embs=None):
+        '''
+        x: wav with shape [B, 1, T]
+        return the same thing as the base model
+        '''
         scores = self.score(x, enroll_embs=enroll_embs)
 
         decisions = torch.argmax(scores, dim=1)
