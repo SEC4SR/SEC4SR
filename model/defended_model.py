@@ -4,7 +4,7 @@ import torch.nn as nn
 
 import warnings
 
-# ensemble manner
+# ensemble manner of multiple defenses
 sequential = 'sequential' # model(d_n(...d_2(d_(x))))
 average = 'average' # average(model(d_(x)), ..., model(d_n(x)))
 
