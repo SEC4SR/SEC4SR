@@ -39,15 +39,8 @@ class CW2(FGSM):
         self.loss = SEC4SR_MarginLoss(targeted=self.targeted, confidence=self.confidence, task=self.task, threshold=self.threshold, clip_max=True)
     
     def attack_batch(self, x_batch, y_batch, lower, upper, batch_id):
-
+        
         def compare(y_pred, y):
-            if isinstance(y_pred, np.ndarray):
-                y_pred = np.copy(y_pred) # avoid influing
-                if self.targeted:
-                    y_pred[y] -= self.confidence
-                else:
-                    y_pred[y] += self.confidence
-                y_pred = np.argmax(y_pred)
             if self.targeted:
                 return y_pred == y
             else:
@@ -86,7 +79,8 @@ class CW2(FGSM):
                     break
                 # deal with box constraint, [-1, 1], different from image
                 input_x = torch.tanh(self.modifier + torch.atanh(x_batch * 0.999999))
-                scores = self.model(input_x) # (n_audios, n_spks)
+                # scores = self.model(input_x) # (n_audios, n_spks)
+                decisions, scores = self.model.make_decision(input_x) # (n_audios, n_spks)
                 # loss1 = self.loss(scores, target_label_one_hot) # Margin Loss in utils.py will automatically change to one hot coding
                 loss1 = self.loss(scores, y_batch)
                 loss2 = torch.sum(torch.square(input_x - x_batch), dim=(1,2))
@@ -97,7 +91,8 @@ class CW2(FGSM):
                 self.optimizer.step()
                 self.modifier.grad.zero_()
 
-                predict = torch.argmax(scores.data, dim=1).detach().cpu().numpy()
+                # predict = torch.argmax(scores.data, dim=1).detach().cpu().numpy()
+                predict = decisions.detach().cpu().numpy()
                 scores = scores.detach().cpu().numpy()
                 loss = loss.detach().cpu().numpy().tolist()
                 loss1 = loss1.detach().cpu().numpy().tolist()
@@ -113,12 +108,12 @@ class CW2(FGSM):
                         continue_flag = False
                     prev_loss = np.mean(loss)
 
-                for ii, (l2, y, y_pred, score, adver_x) in enumerate(zip(loss2, y_batch, predict, scores, input_x)):
-                    if compare(score, y) and l2 < best_l2[ii]:
+                for ii, (l2, y, y_pred, adver_x, l1) in enumerate(zip(loss2, y_batch, predict, input_x, loss1)):
+                    if l1 <= 0 and l2 < best_l2[ii]: # l1 <= 0 indicates the attack succeed with at least kappa confidence
                         best_l2[ii] = l2
                         best_score[ii] = y_pred
                     
-                    if compare(score, y) and l2 < global_best_l2[ii]:
+                    if l1 <= 0 and l2 < global_best_l2[ii]: # l1 <= 0 indicates the attack succeed with at least kappa confidence
                         global_best_l2[ii] = l2
                         global_best_score[ii] = y_pred
                         global_best_adver_x[ii] = adver_x
