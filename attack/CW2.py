@@ -4,7 +4,6 @@ from attack.utils import SEC4SR_MarginLoss
 import torch
 import numpy as np
 
-# TO DO: stop early; EOT (not easy to implement)
 class CW2(FGSM):
 
     def __init__(self, model, task='CSI',
