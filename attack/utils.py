@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from collections import Counter
+import warnings
 
 class SEC4SR_CrossEntropy(nn.CrossEntropyLoss): # deal with something special on top of CrossEntropyLoss
 
@@ -101,6 +102,8 @@ def resolve_loss(loss_name='Entropy', targeted=False, confidence=0., task='CSI',
     assert task in ['CSI', 'SV', 'OSI']
     if task == 'SV' or task == 'OSI' or loss_name == 'Margin': # SV/OSI: ignore loss name, force using Margin Loss
         loss = SEC4SR_MarginLoss(targeted=targeted, confidence=confidence, task=task, threshold=threshold, clip_max=clip_max)
+        if (task == 'SV' or task == 'OSI') and loss_name == 'Entropy':
+            warnings.warn('You are targeting {} task. Force using Margin Loss.')
     else:
         # loss = nn.CrossEntropyLoss(reduction='none') # ONLY FOR CSI TASK
         loss = SEC4SR_CrossEntropy(reduction='none', task='CSI') # ONLY FOR CSI TASK

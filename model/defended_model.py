@@ -2,6 +2,8 @@
 import torch
 import torch.nn as nn
 
+import warnings
+
 # ensemble manner
 sequential = 'sequential' # model(d_n(...d_2(d_(x))))
 average = 'average' # average(model(d_(x)), ..., model(d_n(x)))
@@ -27,13 +29,13 @@ class defended_model(nn.Module):
                 assert len(flag_method) == 2
                 flag = flag_method[0]
                 if flag not in self.base_model.allowed_flags:
-                    Warning('Unsupported Input Level Flag. Ignore the Defense!')
+                    warnings.warn('Unsupported Input Level Flag. Ignore the Defense!')
                     continue
                 method = flag_method[1]
                 flag2defense[flag].append(method)
                 if order == sequential:
                     if flag < prev_flag:
-                        Warning('You want to combine multiple defenses in sequential order, but it seems that the order of your defense is wrong. I have reranged for you!')
+                        warnings.warn('You want to combine multiple defenses in sequential order, but it seems that the order of your defense is wrong. I have reranged for you!')
                     prev_flag = flag
             self.order = order
             self.flag2defense = flag2defense

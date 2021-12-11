@@ -16,6 +16,7 @@ from model.defended_model import defended_model
 
 from dataset.Dataset import Dataset
 
+import warnings
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 bits = 16
@@ -96,7 +97,7 @@ def main(args):
     if args.root_ori is not None and args.name_ori is not None:
         wav_length = None
         args.batch_size = 1 # force set args.batch_size to 1
-        Warning('You want to test the imperceptibility. \
+        warnings.warn('You want to test the imperceptibility. \
         Make sure you set batch_size to 1 and wav_length to None for attackMain.py when generating adv. voices \
             Otherwise, the adv. and ori. voices will not align with each other. \
                 and the imperceptibility result is wrong.')

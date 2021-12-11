@@ -15,6 +15,7 @@ from model.defended_model import defended_model
 
 from dataset.Dataset import Dataset
 
+import warnings
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -48,7 +49,7 @@ def main(args):
     if args.hardest and args.simplest:
         args.hardest = False
         args.simplest = False
-        Warning('You set both hardest and simplest to true, will roll back to random!!')
+        warnings.warn('You set both hardest and simplest to true, will roll back to random!!')
         
     #Step3: start
     name2target = {}
