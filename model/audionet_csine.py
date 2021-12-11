@@ -10,7 +10,7 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+# import torch.nn.functional as F
 
 from model._audionet.Preprocessor import Preprocessor
 from model.utils import check_input_range
@@ -117,15 +117,15 @@ class audionet_csine(nn.Module):
         self.threshold = -np.infty # this model targeted CSI-NE task, so threshold is -infty
         self.allowed_flags = sorted([
             0, 1
-        ])
+        ])# 0: wav; 1: raw feat
         self.range_type = 'scale'
 
     
     def compute_feat(self, x, flag=1):
         """
-        x: [B, 1, T]
-        flag: the flag indicating to compute what type of features
-        return feats: [B, T, F]
+        x: wav with shape [B, 1, T]
+        flag: the flag indicating to compute what type of features (1: raw feat)
+        return: feats with shape [B, T, F] (T: #Frames, F: #feature_dim)
         """
         assert flag in [f for f in self.allowed_flags if f != 0]
         x = check_input_range(x, range_type=self.range_type)
@@ -138,7 +138,10 @@ class audionet_csine(nn.Module):
 
     
     def embedding(self, x, flag=0):
-
+        """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat)
+        """
         assert flag in self.allowed_flags
         if flag == 0:
             x = check_input_range(x, range_type=self.range_type)
@@ -158,7 +161,7 @@ class audionet_csine(nn.Module):
         """
         x = x.squeeze(1)
         feat = self.prep(x) # (B, F, T)
-        return feat.transpose(1, 2)
+        return feat.transpose(1, 2) # (B, T, F)
     
 
     def extract_emb(self, x):
@@ -201,6 +204,10 @@ class audionet_csine(nn.Module):
     
     def forward(self, x, flag=0, return_emb=False, enroll_embs=None):
         """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat)
+        """
+        """
         enroll_embs is useless since this model targets CSI-NE task
         just to keep consistency with other models
         """
@@ -214,6 +221,10 @@ class audionet_csine(nn.Module):
 
     def score(self, x, flag=0, enroll_embs=None):
         """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat)
+        """
+        """
         enroll_embs is useless since this model targets CSI-NE task
         just to keep consistency with other models
         """
@@ -224,6 +235,10 @@ class audionet_csine(nn.Module):
     
 
     def make_decision(self, x, flag=0, enroll_embs=None):
+        """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat)
+        """
         """
         enroll_embs is useless since this model targets CSI-NE task
         just to keep consistency with other models

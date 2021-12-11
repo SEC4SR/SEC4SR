@@ -43,16 +43,16 @@ class xv_plda(iv_plda):
         self.threshold = threshold if threshold else -np.infty # Valid for SV and OSI tasks; CSI: -infty
 
         self.allowed_flags = sorted([
-            0, 1, 2
-        ])
+            0, 1, 2 
+        ])# 0: wav; 1: raw feat; 2: cmvn feat
         self.range_type = 'origin'
     
 
     def compute_feat(self, x, flag=1):
         """
-        x: [B, 1, T]
-        flag: the flag indicating to compute what type of features
-        return feats: [B, T, F]
+        x: wav with shape [B, 1, T]
+        flag: the flag indicating to compute what type of features (1: raw feat; 2: cmvn feat)
+        return: feats with shape [B, T, F] (T: #Frames, F: #feature_dim)
         """
         assert flag in [f for f in self.allowed_flags if f != 0]
         x = check_input_range(x, range_type=self.range_type)
@@ -69,7 +69,10 @@ class xv_plda(iv_plda):
     
     def comput_feat_from_feat(self, feats, ori_flag=1, des_flag=2):
         """
-        x: [B, T, F]
+        transfer function between different levels of acoustic features
+        x: feature with shape [B, T, F]
+        ori_flag: the level of input feature x
+        des_flag: the level of the target feature
         """
         assert ori_flag in [f for f in self.allowed_flags if f != 0]
         assert des_flag in [f for f in self.allowed_flags if f != 0]
@@ -82,7 +85,10 @@ class xv_plda(iv_plda):
 
     
     def embedding(self, x, flag=0):
-
+        """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat; 2: cmvn feat)
+        """
         assert flag in self.allowed_flags
         if flag == 0:
             x = check_input_range(x, range_type=self.range_type)

@@ -68,9 +68,9 @@ class iv_plda(nn.Module):
     
     def compute_feat(self, x, flag=1):
         """
-        x: [B, 1, T]
+        x: wav with shape [B, 1, T]
         flag: the flag indicating to compute what type of features (1: raw feat; 2: delta feat; 3: cmvn feat)
-        return feats: [B, T, F]
+        return: feats with shape [B, T, F] (T: #Frames, F: #feature_dim)
         """
         assert flag in [f for f in self.allowed_flags if f != 0]
         x = check_input_range(x, range_type=self.range_type)
@@ -95,8 +95,8 @@ class iv_plda(nn.Module):
     def comput_feat_from_feat(self, feats, ori_flag=1, des_flag=2):
         """
         transfer function between different levels of acoustic features
-        x: [B, T, F]
-        ori_flag: the level of input x
+        x: feature with shape [B, T, F]
+        ori_flag: the level of input feature x
         des_flag: the level of the target feature
         """
         assert ori_flag in [f for f in self.allowed_flags if f != 0]
@@ -277,7 +277,9 @@ class iv_plda(nn.Module):
 
 
     def cmvn(self, batch_delta_feat):
-
+        '''
+        batch_delta_feat: (B, T, F)
+        '''
         batch_cmvn_feat = None
 
         for delta_feat in batch_delta_feat:
