@@ -15,6 +15,7 @@ class defended_model(nn.Module):
         super().__init__()
 
         self.base_model = base_model
+        self.threshold = base_model.threshold
         
         ## check the defense
         if defense is not None:
