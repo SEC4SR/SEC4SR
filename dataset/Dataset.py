@@ -67,7 +67,7 @@ class Dataset(torch_dataset):
         if spk_id in self.spk_ids:
             spk_label = self.spk_ids.index(spk_id)
         else:
-            spk_label = -1
+            spk_label = -1 # # -1 means the spk is an imposter (not any enrolled speakers)
         spk_label = torch.tensor(spk_label, dtype=torch.long)
         audio_path = os.path.join(self.root, spk_id, audio_name)
         audio, _ = torchaudio.load(audio_path)

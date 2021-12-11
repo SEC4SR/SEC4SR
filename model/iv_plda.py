@@ -172,7 +172,7 @@ class iv_plda(nn.Module):
         decisions = torch.argmax(scores, dim=1)
         max_scores = torch.max(scores, dim=1)[0]
         decisions = torch.where(max_scores > self.threshold, decisions,
-                        torch.tensor([-1] * decisions.shape[0], dtype=torch.int64, device=decisions.device))
+                        torch.tensor([-1] * decisions.shape[0], dtype=torch.int64, device=decisions.device)) # -1 means reject
 
         return decisions, scores
 
