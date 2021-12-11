@@ -218,7 +218,7 @@ class audionet_csine(nn.Module):
         just to keep consistency with other models
         """
         logits = self.forward(x, flag=flag)
-        scores = F.softmax(logits, dim=1)
+        # scores = F.softmax(logits, dim=1) # do not use softmax! Since CrossEntropy Loss in Pytorch already does this for us. Also to keep consistent with other models.
         return scores
     
 
