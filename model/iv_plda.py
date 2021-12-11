@@ -62,14 +62,14 @@ class iv_plda(nn.Module):
 
         self.allowed_flags = sorted([
             0, 1, 2, 3
-        ])
+        ]) # 0: wav; 1: raw feat; 2: delta feat; 3: cmvn feat
         self.range_type = 'origin'
 
     
     def compute_feat(self, x, flag=1):
         """
         x: [B, 1, T]
-        flag: the flag indicating to compute what type of features
+        flag: the flag indicating to compute what type of features (1: raw feat; 2: delta feat; 3: cmvn feat)
         return feats: [B, T, F]
         """
         assert flag in [f for f in self.allowed_flags if f != 0]
@@ -94,7 +94,10 @@ class iv_plda(nn.Module):
     
     def comput_feat_from_feat(self, feats, ori_flag=1, des_flag=2):
         """
+        transfer function between different levels of acoustic features
         x: [B, T, F]
+        ori_flag: the level of input x
+        des_flag: the level of the target feature
         """
         assert ori_flag in [f for f in self.allowed_flags if f != 0]
         assert des_flag in [f for f in self.allowed_flags if f != 0]
@@ -111,7 +114,10 @@ class iv_plda(nn.Module):
 
     
     def embedding(self, x, flag=0):
-
+        """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat; 2: delta feat; 3: cmvn feat)
+        """
         assert flag in self.allowed_flags
         if flag == 0:
             x = check_input_range(x, range_type=self.range_type)
@@ -130,7 +136,10 @@ class iv_plda(nn.Module):
     
 
     def forward(self, x, flag=0, return_emb=False, enroll_embs=None):
-
+        """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat; 2: delta feat; 3: cmvn feat)
+        """
         embedding = self.embedding(x, flag=flag)
         
         if not hasattr(self, 'enroll_embs'):
@@ -144,12 +153,20 @@ class iv_plda(nn.Module):
 
     
     def score(self, x, flag=0, enroll_embs=None):
+        """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat; 2: delta feat; 3: cmvn feat)
+        """
         logits = self.forward(x, flag=flag, enroll_embs=enroll_embs)
         scores = logits
         return scores
     
 
     def make_decision(self, x, flag=0, enroll_embs=None):
+        """
+        x: wav or acoustic features (raw/delta/cmvn)
+        flag: indicating the type of x (0: wav; 1: raw feat; 2: delta feat; 3: cmvn feat)
+        """
         scores = self.score(x, flag=flag, enroll_embs=enroll_embs)
 
         decisions = torch.argmax(scores, dim=1)
