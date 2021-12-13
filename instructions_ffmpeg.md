@@ -37,12 +37,18 @@ The instruction targets Ubuntu. For other Linux distributions, you may need to m
 
 ## step 3: download the external en-/de-coders and install them
 Download links:
-- [OPUS](https://ftp.osuosl.org/pub/xiph/releases/)
-- [SPEEX](https://ftp.osuosl.org/pub/xiph/releases/)
-- [AMR_nb & AMR_wb_dec)](https://sourceforge.net/projects/opencore-amr/)
-- [AMR_wb_enc](https://nchc.dl.sourceforge.net/project/opencore-amr/vo-amrwbenc/vo-amrwbenc-0.1.3.tar.gz)
+<!-- - [OPUS](https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1.3.1.tar.gz)
+- [SPEEX](https://ftp.osuosl.org/pub/xiph/releases/speex/speex-1.2rc2.tar.gz)
+- [AMR_nb & AMR_wb_dec](https://sourceforge.net/projects/opencore-amr/files/opencore-amr/opencore-amr-0.1.5.tar.gz/download)
+- [AMR_wb_enc](https://sourceforge.net/projects/opencore-amr/files/vo-amrwbenc/vo-amrwbenc-0.1.3.tar.gz/download)
 - [MP3](http://nchc.dl.sourceforge.net/project/lame/lame/3.99/lame-3.99.5.tar.gz)
-- [AAC](https://sourceforge.net/projects/opencore-amr/files/fdk-aac/)
+- [AAC](https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download) -->
+- [OPUS](https://ftp.osuosl.org/pub/xiph/releases/opus)
+- [SPEEX](https://ftp.osuosl.org/pub/xiph/releases/speex)
+- [AMR_nb & AMR_wb_dec](https://sourceforge.net/projects/opencore-amr/files/opencore-amr)
+- [AMR_wb_enc](https://sourceforge.net/projects/opencore-amr/files/vo-amrwbenc)
+- [MP3](https://sourceforge.net/projects/lame/files/lame/)
+- [AAC](https://sourceforge.net/projects/opencore-amr/files/fdk-aac)
 
 Install command:
 
