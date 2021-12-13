@@ -12,7 +12,7 @@ Feel free to use SEC4SR for academic purpose 😄. For commercial purpose, pleas
 ## 1.1 Requirements
 pytorch=1.6.0, torchaudio=0.6.0, numpy=1.19.2, scipy=1.4.1, libkmcuda=6.2.3, kmeans-pytorch=0.3, torch-lfilter=0.0.3, pesq=0.0.2, pystoi=0.3.3, librosa=0.8.0, kaldi-io=0.9.4
 
-If you want to use speech_compression methods in `defense/speech_compression.py`, you should also install `ffmpeg` and the required de/en-coders.
+If you want to use speech_compression methods in `defense/speech_compression.py`, you should also install `ffmpeg` and the required de/en-coders. See this [instructions](instructions_ffmpeg.md).
 
 ## 1.2 Dataset Preparation
 We provide five datasets, namely, Spk10_enroll, Spk10_test, Spk10_imposter, Spk251_train and Spk_251_test. They cover all the recognition tasks (i.e., CSI-E, CSI-NE, SV and OSI). The code in `./dataset/Dataset.py` will download them automatically when they are used. You can also manually download them using the follwing links:

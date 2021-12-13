@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def Speech_Compression_Non_Diff(new, lengths, bits_per_sample, 
                                 name, param, fs, same_size, 
-                                parallel, n_jobs, start_2):
+                                parallel, n_jobs, start_2, debug):
     
     def _worker(start_, end):
         st = time.time()
@@ -26,16 +26,22 @@ def Speech_Compression_Non_Diff(new, lengths, bits_per_sample,
             command = "ffmpeg -i {} -ac 1 -ar {} {} {} -c:a {} {}".format(origin_audio_path, fs, 
                             param[0], param[1], param[2], opus_audio_path)
             args = shlex.split(command)
-            p = subprocess.Popen(args, stderr=subprocess.DEVNULL,
-                                stdout=subprocess.DEVNULL)
+            if debug:
+                p = subprocess.Popen(args)
+            else:
+                p = subprocess.Popen(args, stderr=subprocess.DEVNULL, 
+                                    stdout=subprocess.DEVNULL)
             p.wait()
 
             pcm_type = "pcm_s16le" if bits_per_sample == 16 else "pcm_s8"
             target_audio_path = tmp_dir + "/" + str(i) + "-target.wav"
             command = "ffmpeg -i {} -ac 1 -ar {} -c:a {} {}".format(opus_audio_path, fs, pcm_type, target_audio_path)
             args = shlex.split(command)
-            p = subprocess.Popen(args, stderr=subprocess.DEVNULL, 
-                                stdout=subprocess.DEVNULL)
+            if debug:
+                p = subprocess.Popen(args)
+            else:
+                p = subprocess.Popen(args, stderr=subprocess.DEVNULL, 
+                                    stdout=subprocess.DEVNULL)
             p.wait()
 
             _, coding_audio = read(target_audio_path)
@@ -130,23 +136,23 @@ def Speech_Compression_Non_Diff(new, lengths, bits_per_sample,
 
 speech_compression = BPDA(Speech_Compression_Non_Diff, lambda *args: args[0])
 
-def OPUS(new, lengths=None, bits_per_sample=16, param=16000, fs=16000, same_size=True, parallel=True, n_jobs=10):
+def OPUS(new, lengths=None, bits_per_sample=16, param=16000, fs=16000, same_size=True, parallel=True, n_jobs=10, debug=False):
 
     return speech_compression(new, lengths, bits_per_sample, 
             'opus', ['-b:a', param, 'libopus'], 
             fs, same_size, 
-            parallel, n_jobs, 69) 
+            parallel, n_jobs, 69, debug) 
 
 
-def SPEEX(new, lengths=None, bits_per_sample=16, param=43200, fs=16000, same_size=True, parallel=True, n_jobs=10):
+def SPEEX(new, lengths=None, bits_per_sample=16, param=43200, fs=16000, same_size=True, parallel=True, n_jobs=10, debug=False):
 
     return speech_compression(new, lengths, bits_per_sample, 
             'spx', ['-b:a', param, 'libspeex'], 
             fs, same_size, 
-            parallel, n_jobs, None)
+            parallel, n_jobs, None, debug)
 
 
-def AMR(new, lengths=None, bits_per_sample=16, param=6600, fs=16000, same_size=True, parallel=True, n_jobs=10):
+def AMR(new, lengths=None, bits_per_sample=16, param=6600, fs=16000, same_size=True, parallel=True, n_jobs=10, debug=False):
     
     if fs == 16000:
         legal_bit_rate = [6600, 8850, 12650, 14250, 15850, 18250, 19850, 23050, 23850]
@@ -160,36 +166,36 @@ def AMR(new, lengths=None, bits_per_sample=16, param=6600, fs=16000, same_size=T
     return speech_compression(new, lengths, bits_per_sample, 
             'amr', ['-b:a', param, "libvo_amrwbenc" if fs == 16000 else "libopencore_amrnb"], 
             fs, same_size, 
-            parallel, n_jobs, None)
+            parallel, n_jobs, None, debug)
 
 
-def AAC_V(new, lengths=None, bits_per_sample=16, param=5, fs=16000, same_size=True, parallel=True, n_jobs=10):
+def AAC_V(new, lengths=None, bits_per_sample=16, param=5, fs=16000, same_size=True, parallel=True, n_jobs=10, debug=False):
 
     return speech_compression(new, lengths, bits_per_sample, 
             'aac', ['-vbr', param, 'libfdk_aac'], 
             fs, same_size, 
-            parallel, n_jobs, 2048)
+            parallel, n_jobs, 2048, debug)
 
 
-def AAC_C(new, lengths=None, bits_per_sample=16, param=20000, fs=16000, same_size=True, parallel=True, n_jobs=10):
+def AAC_C(new, lengths=None, bits_per_sample=16, param=20000, fs=16000, same_size=True, parallel=True, n_jobs=10, debug=False):
 
     return speech_compression(new, lengths, bits_per_sample, 
             'aac', ['-b:a', param, 'libfdk_aac'], 
             fs, same_size, 
-            parallel, n_jobs, 2048)
+            parallel, n_jobs, 2048, debug)
 
 
-def MP3_V(new, lengths=None, param=9, fs=16000, bits_per_sample=16, same_size=True, parallel=True, n_jobs=10):
+def MP3_V(new, lengths=None, param=9, fs=16000, bits_per_sample=16, same_size=True, parallel=True, n_jobs=10, debug=False):
 
     return speech_compression(new, lengths, bits_per_sample, 
             'mp3', ['-q:a', param, 'mp3'], 
             fs, same_size, 
-            parallel, n_jobs, 0)
+            parallel, n_jobs, 0, debug)
 
 
-def MP3_C(new, lengths=None, param=16000, fs=16000, bits_per_sample=16, same_size=True, parallel=True, n_jobs=10):
+def MP3_C(new, lengths=None, param=16000, fs=16000, bits_per_sample=16, same_size=True, parallel=True, n_jobs=10, debug=False):
 
     return speech_compression(new, lengths, bits_per_sample, 
             'mp3', ['-b:a', param, 'mp3'], 
             fs, same_size,
-            parallel, n_jobs, 0)
+            parallel, n_jobs, 0, debug)
