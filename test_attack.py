@@ -159,6 +159,8 @@ def main(args):
         target_ASR = target_success_cnt * 100 / total_cnt
         print('Targeted Attack Success Rate:', target_ASR)
     if args.root_ori is not None and args.name_ori is not None:
+        # check for abnormal imper
+        imper = [imper_ for imper_ in imper if imper_[4] != np.infty]
         imper = np.mean(np.array(imper), axis=0)
         # print('L2, L0, L1, Linf, SNR, PESQ, STOI', imper)
         print('L2, SNR, PESQ: {:.3f} {:.2f} {:.2f}'.format(imper[0], imper[4], imper[5]))
