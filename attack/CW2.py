@@ -39,22 +39,8 @@ class CW2(FGSM):
         self.loss = SEC4SR_MarginLoss(targeted=self.targeted, confidence=self.confidence, task=self.task, threshold=self.threshold, clip_max=True)
     
     def attack_batch(self, x_batch, y_batch, lower, upper, batch_id):
-        
-        def compare(y_pred, y):
-            if self.targeted:
-                return y_pred == y
-            else:
-                return y_pred != y
 
         n_audios, _, _ = x_batch.shape
-
-        # change target_label to one hot encoding
-        # DELETE:Margin Loss in utils.py will automatically change to one hot coding
-        # n_spks = self.model.num_spks
-        # target_label_one_hot = torch.zeros((n_audios, n_spks), dtype=torch.float, device=x_batch.device)
-        # for i in range(n_audios):
-        #     index = int(y_batch[i])
-        #     target_label_one_hot[i][index] = 1
 
         const = torch.tensor([self.initial_const] * n_audios, dtype=torch.float, device=x_batch.device)
         lower_bound = torch.tensor([0] * n_audios, dtype=torch.float, device=x_batch.device)
@@ -62,7 +48,8 @@ class CW2(FGSM):
 
         global_best_l2 = [np.infty] * n_audios
         global_best_adver_x = x_batch.clone()
-        global_best_score = [-1] * n_audios
+        # global_best_score = [-1] * n_audios
+        global_best_score = [-2] * n_audios # do not use [-1] * n_audios since -1 is within the decision space of SV and OSI tasks 
 
         for _ in range(self.binary_search_steps):
 
@@ -70,28 +57,32 @@ class CW2(FGSM):
             self.optimizer = torch.optim.Adam([self.modifier], lr=self.lr)
 
             best_l2 = [np.infty] * n_audios
-            best_score = [-1] * n_audios
+            # best_score = [-1] * n_audios
+            best_score = [-2] * n_audios
 
             continue_flag = True
             prev_loss = np.infty
-            for n_iter in range(self.max_iter):
+            # we need to perform the gradient descent max_iter times; 
+            # the additional one iteration is used to to evaluate the final updated examples
+            for n_iter in range(self.max_iter+1): 
+            # for n_iter in range(self.max_iter):
                 if not continue_flag:
                     break
                 # deal with box constraint, [-1, 1], different from image
                 input_x = torch.tanh(self.modifier + torch.atanh(x_batch * 0.999999))
                 # scores = self.model(input_x) # (n_audios, n_spks)
                 decisions, scores = self.model.make_decision(input_x) # (n_audios, n_spks)
-                # loss1 = self.loss(scores, target_label_one_hot) # Margin Loss in utils.py will automatically change to one hot coding
                 loss1 = self.loss(scores, y_batch)
                 loss2 = torch.sum(torch.square(input_x - x_batch), dim=(1,2))
                 loss = const * loss1 + loss2
 
-                loss.backward(torch.ones_like(loss))
-                # update modifier
-                self.optimizer.step()
-                self.modifier.grad.zero_()
+                if n_iter < self.max_iter: # we only perform gradient descent max_iter times
+                    loss.backward(torch.ones_like(loss))
+                    # update modifier
+                    self.optimizer.step()
+                    self.modifier.grad.zero_()
 
-                # predict = torch.argmax(scores.data, dim=1).detach().cpu().numpy()
+                # predict = torch.argmax(scores.data, dim=1).detach().cpu().numpy() # not suitable for SV and OSI tasks which will reject
                 predict = decisions.detach().cpu().numpy()
                 scores = scores.detach().cpu().numpy()
                 loss = loss.detach().cpu().numpy().tolist()
@@ -108,18 +99,19 @@ class CW2(FGSM):
                         continue_flag = False
                     prev_loss = np.mean(loss)
 
-                for ii, (l2, y, y_pred, adver_x, l1) in enumerate(zip(loss2, y_batch, predict, input_x, loss1)):
+                for ii, (l2, y_pred, adver_x, l1) in enumerate(zip(loss2, predict, input_x, loss1)):
+                    # IF-BRANCH-1
                     if l1 <= 0 and l2 < best_l2[ii]: # l1 <= 0 indicates the attack succeed with at least kappa confidence
                         best_l2[ii] = l2
                         best_score[ii] = y_pred
-                    
+                    # IF-BRANCH-2
                     if l1 <= 0 and l2 < global_best_l2[ii]: # l1 <= 0 indicates the attack succeed with at least kappa confidence
                         global_best_l2[ii] = l2
                         global_best_score[ii] = y_pred
                         global_best_adver_x[ii] = adver_x
-            
-            for jj, (y_pred, y) in enumerate(zip(best_score, y_batch)):
-                if compare(y_pred, y) and  y_pred != -1:
+
+            for jj, y_pred in enumerate(best_score):
+                if y_pred != -2: # y_pred != -2 infers that IF-BRANCH-1 is entered at least one time, thus the attack succeeds
                     upper_bound[jj] = min(upper_bound[jj], const[jj])
                     if upper_bound[jj] < 1e9:
                         const[jj] = (lower_bound[jj] + upper_bound[jj]) / 2
@@ -129,10 +121,12 @@ class CW2(FGSM):
                         const[jj] = (lower_bound[jj] + upper_bound[jj]) / 2
                     else:
                         const[jj] *= 10
+            
+            print(const.detach().cpu().numpy(), best_l2, global_best_l2)
         
         success = [False] * n_audios
-        for kk, (y_pred, y) in enumerate(zip(global_best_score, y_batch)):
-            if compare(y_pred, y):
+        for kk, y_pred in enumerate(global_best_score):
+            if y_pred != -2: # y_pred != -2 infers that IF-BRANCH-2 is entered at least one time, thus the attack succeeds
                 success[kk] = True 
 
         return global_best_adver_x, success
