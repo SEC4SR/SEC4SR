@@ -21,7 +21,7 @@ The instruction targets Ubuntu. For other Linux distributions, you may need to m
 
   if you own `sudo` privilege: 
   
-  `apt-get install pkg-config`
+  `sudo apt-get install pkg-config`
 
   if you are ordinary user: 
   
