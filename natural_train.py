@@ -129,7 +129,7 @@ def main(args):
             y_batch = y_batch.to(device)
             # print(x_batch.min(), x_batch.max())
 
-            #Gaussian augmentation to normal samples
+            #Noise augmentation to normal samples
             all_ids = range(x_batch.shape[0])
             normal_ids = all_ids
 
