@@ -28,7 +28,11 @@ def parser_args():
 
     parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
 
-    parser.add_argument('-aug_eps', type=float, default=0.002)
+    # parser.add_argument('-aug_eps', type=float, default=0.002)
+    # unlike natural_train.py, we don't apply noise augmentation to normal examples 
+    # since adversarial examples already augment the training data.
+    parser.add_argument('-aug_eps', type=float, default=0.)
+
 
     parser.add_argument('-attacker', type=str, choices=['PGD', 'FGSM'], default='PGD')
     parser.add_argument('-epsilon', type=float, default=0.002) 
@@ -46,7 +50,7 @@ def parser_args():
     parser.add_argument('-num_workers', type=int, default=4)
     parser.add_argument('-wav_length', type=int, default=80_000)
 
-    parser.add_argument('-ratio', type=float, default=0.5) # adversarial examples ratio
+    parser.add_argument('-ratio', type=float, default=0.5) # the ratio of adversarial examples in each minibatch
 
     parser.add_argument('-model_ckpt', type=str)
     parser.add_argument('-log', type=str)
@@ -196,7 +200,7 @@ def main(args):
             success_rate = success_cnt * 100 / len(success)
             ASR.append(success_rate)
 
-            #Gaussian augmentation to normal samples
+            #Noise augmentation to normal samples
             all_ids = range(x_batch.shape[0])
             normal_ids = [i_ for i_ in all_ids if i_ not in adv_ids]
             if len(normal_ids) > 0 and args.aug_eps > 0.:
