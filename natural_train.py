@@ -19,8 +19,10 @@ def parser_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-defense', default=None)
-    parser.add_argument('-defense_param', default=None, nargs='+')
+    parser.add_argument('-defense', nargs='+', default=None)
+    parser.add_argument('-defense_param', nargs='+', default=None)
+    parser.add_argument('-defense_flag', nargs='+', default=None)
+    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])
 
     parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
 
