@@ -66,8 +66,12 @@ def main(args):
     imposter_loader = DataLoader(imposter_dataset, batch_size=1, num_workers=0)
 
     #Step3: scoring
-    score_target = []
-    score_untarget = []
+    # score_target = []
+    # score_untarget = []
+    score_target_sv = []
+    score_untarget_sv = []
+    score_target_osi = []
+    score_untarget_osi = []
     trues = [] # used to calculate IER for OSI
     max_scores = [] # used to calculate IER for OSI
     decisions = [] # used to calculate IER for OSI
@@ -81,16 +85,14 @@ def main(args):
             decision, scores = model.make_decision(origin)
             decision = decision.cpu().item()
             scores = scores.cpu().numpy().flatten() # (n_spks,)
-            # print(index, file_name[0], scores, true, decision)
-            if args.task == 'SV':
-                score_target.append(scores[true])
-                score_untarget += np.delete(scores, true).tolist()
-            elif args.task == 'OSI':
-                if decision == true:
-                    score_target.append(scores[true])
-                trues.append(true)
-                max_scores.append(np.max(scores))
-                decisions.append(decision)
+            print(index, file_name[0], scores, true, decision)
+            score_target_sv.append(scores[true])
+            score_untarget_sv += np.delete(scores, true).tolist()
+            if decision == true:
+                score_target_osi.append(scores[true])
+            trues.append(true)
+            max_scores.append(np.max(scores))
+            decisions.append(decision)
             
             if decision == true:
                 acc_cnt += 1
@@ -101,26 +103,26 @@ def main(args):
             decision, scores = model.make_decision(origin)
             decision = decision.cpu().item()
             scores = scores.cpu().numpy().flatten() # (n_spks,)
-            # print(index, file_name[0], scores, true, decision)
-            if args.task == 'SV':
-                score_untarget += scores.tolist()
-            elif args.task == 'OSI':
-                score_untarget.append(np.max(scores))
+            print(index, file_name[0], scores, true, decision)
+            score_untarget_sv += scores.tolist()
+            score_untarget_osi.append(np.max(scores))
     
-    threshold, frr, far = set_threshold(score_target, score_untarget)
-    if args.task == 'SV':
-        print("----- Test of {}-based {}, result ---> threshold: {:.2f} EER: {:.2f}".format(args.system_type, 
-        args.task, threshold, max(frr, far)))
-    elif args.task == 'OSI':
-        IER_cnt = np.intersect1d(np.argwhere(max_scores >= threshold).flatten(),
-                    np.argwhere(decisions != trues).flatten()).flatten().size
-        # # IER: Identification Error, 
-        # for detail, refer to 'Who is Real Bob? Adversarial Attacks on Speaker Recognition Systems'
-        IER = IER_cnt * 100 / len(trues) 
-        print("----- Test of {}-based {}, result ---> threshold: {:.2f}, EER: {:.2f}, IER: {:.2f} -----".format(
-            args.system_type, args.task, threshold, max(frr, far), IER))
-        
-    
+    task = 'SV'
+    threshold, frr, far = set_threshold(score_target_sv, score_untarget_sv)
+    print("----- Test of {}-based {}, result ---> threshold: {:.2f} EER: {:.2f}".format(args.system_type, 
+    task, threshold, max(frr, far)))
+
+    task = 'OSI'
+    threshold, frr, far = set_threshold(score_target_osi, score_untarget_osi)
+    IER_cnt = np.intersect1d(np.argwhere(max_scores >= threshold).flatten(),
+                np.argwhere(decisions != trues).flatten()).flatten().size
+    # # IER: Identification Error, 
+    # for detail, refer to 'Who is Real Bob? Adversarial Attacks on Speaker Recognition Systems'
+    IER = IER_cnt * 100 / len(trues) 
+    print("----- Test of {}-based {}, result ---> threshold: {:.2f}, EER: {:.2f}, IER: {:.2f} -----".format(
+        args.system_type, task, threshold, max(frr, far), IER))
+
+    # CSI-E accuracy
     print('CSI ACC:', acc_cnt * 100 / len(test_loader))
 
 
@@ -130,7 +132,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-root', default='./data')
-    parser.add_argument('-task', required=True, choices=['SV', 'OSI']) #the threshold setting of SV is different from OSI
     parser.add_argument('-defense', nargs='+', default=None)
     parser.add_argument('-defense_param', nargs='+', default=None)
     parser.add_argument('-defense_flag', nargs='+', default=None, type=int)
