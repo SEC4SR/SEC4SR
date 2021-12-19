@@ -9,13 +9,16 @@ import numpy as np
 import torch
 import math
 import torch
-from libKMCUDA import kmeans_cuda
+# from libKMCUDA import kmeans_cuda # we do not need to install libKMACUDA and import kmeans_cuda if we do not have a GPU 
 from kmeans_pytorch import kmeans as kmeans_pytorch # CPU version and 'cos' distance; # re-name to avoid repeated function names
+
+if torch.cuda.is_available():
+    from libKMCUDA import kmeans_cuda
 
 def FeCo(feat, method='kmeans', param=0.5, other_param='L2'):
     return FEATURE_COMPRESSION(feat, method, param, other_param)
 
-def FEATURE_COMPRESSION(feat, method='kmeans', param=0.5, other_param='L2'):
+def FEATURE_COMPRESSION(feat, method='kmeans', param=0.5, other_param='L2'): 
     """[summary]
 
     Parameters
