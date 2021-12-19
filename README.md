@@ -10,7 +10,11 @@ Feel free to use SEC4SR for academic purpose 😄. For commercial purpose, pleas
 
 # 1. Usage
 ## 1.1 Requirements
-pytorch=1.6.0, torchaudio=0.6.0, numpy=1.19.2, scipy=1.4.1, libkmcuda=6.2.3, kmeans-pytorch=0.3, torch-lfilter=0.0.3, pesq=0.0.2, pystoi=0.3.3, librosa=0.8.0, kaldi-io=0.9.4
+pytorch=1.6.0, torchaudio=0.6.0, numpy=1.19.2, scipy=1.4.1, 
+[libKMCUDA=6.2.3](https://github.com/src-d/kmcuda), kmeans-pytorch=0.3, torch-lfilter=0.0.3, 
+pesq=0.0.2, pystoi=0.3.3, librosa=0.8.0, kaldi-io=0.9.4
+
+If you don't have GPU, you can skip libKMCUDA.
 
 If you want to use speech_compression methods in `defense/speech_compression.py`, you should also install `ffmpeg` and the required de/en-coders. See this [instructions](instructions_ffmpeg.md).
 
