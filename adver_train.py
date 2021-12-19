@@ -274,7 +274,8 @@ def main(args):
             logging.info('Val Acc: {:.6f} Val Adver Acc: {:.6f}'.format(val_acc, val_adver_acc))
         
     # torch.save(model, model_ckpt)
-    torch.save(model.state_dict(), model_ckpt)
+    # torch.save(model.state_dict(), model_ckpt) # DO NOT save the whole defended_model
+    torch.save(model.base_model.state_dict(), model_ckpt) # save the base_model
 
 if __name__ == '__main__':
 
