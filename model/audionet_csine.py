@@ -45,7 +45,7 @@ class audionet_csine(nn.Module):
             self.spk_ids = [label2id[i] for i in range(len(list(label2id.keys())))]
             self.id2label = id2label
             self.label2id = label2id
-            num_class_2 == len(self.spk_ids) # label encoder provides spk_ids info
+            num_class_2 = len(self.spk_ids) # label encoder provides spk_ids info
         
         if len([kk for kk in [num_class_1, num_class_2] if kk is not None]) == 2:
             assert num_class_1 == num_class_2
