@@ -24,7 +24,7 @@ def parser_args():
     parser.add_argument('-defense', nargs='+', default=None)
     parser.add_argument('-defense_param', nargs='+', default=None)
     parser.add_argument('-defense_flag', nargs='+', default=None)
-    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])
+    parser.add_argument('-defense_order', default='sequential', choices=['sequential', 'average'])
 
     parser.add_argument('-label_encoder', default='./label-encoder-audionet-Spk251_test.txt')
 
@@ -259,7 +259,8 @@ def main(args):
         ckpt_optim = ckpt + '.opt'
         # torch.save(model, ckpt)
         # torch.save(optimizer, ckpt_optim)
-        torch.save(model.state_dict(), ckpt)
+        # torch.save(model.state_dict(), ckpt) # DO NOT save the whole defended_model
+        torch.save(model.base_model.state_dict(), ckpt) # save the base_model
         torch.save(optimizer.state_dict(), ckpt_optim)
         print()
         print("Save epoch ckpt in %s" % ckpt)
