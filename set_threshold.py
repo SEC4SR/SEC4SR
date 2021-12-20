@@ -135,7 +135,7 @@ if __name__ == '__main__':
     parser.add_argument('-defense', nargs='+', default=None)
     parser.add_argument('-defense_param', nargs='+', default=None)
     parser.add_argument('-defense_flag', nargs='+', default=None, type=int)
-    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])
+    parser.add_argument('-defense_order', default='sequential', choices=['sequential', 'average'])
 
     subparser = parser.add_subparsers(dest='system_type') # either iv (ivector-PLDA) or xv (xvector-PLDA)
 

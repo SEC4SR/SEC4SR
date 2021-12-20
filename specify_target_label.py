@@ -127,7 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('-defense', nargs='+', default=None)
     parser.add_argument('-defense_param', nargs='+', default=None)
     parser.add_argument('-defense_flag', nargs='+', default=None, type=int)
-    parser.add_argument('-defense_order', default=None, choices=['sequential', 'average'])    
+    parser.add_argument('-defense_order', default='sequential', choices=['sequential', 'average'])    
 
     args = parser.parse_args()
     main(args)
