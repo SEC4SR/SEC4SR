@@ -28,24 +28,33 @@ class audionet_csine(nn.Module):
 
         self.device = device
 
+        num_class_1 = None
         if extractor_file is not None:
             model_state_dict = torch.load(extractor_file, map_location=self.device)
-            num_class = model_state_dict['fc.bias'].shape[0]
+            num_class_1 = model_state_dict['fc.bias'].shape[0]
+        
+        num_class_2 = None
+        if label_encoder is not None:
+            # parser label info
+            id_label = np.loadtxt(label_encoder, dtype=str, converters={0: lambda s: s[1:-1]})
+            id2label = {}
+            label2id = {}
+            for row in id_label:
+                id2label[row[0]] = int(row[1])
+                label2id[int(row[1])] = row[0]
+            self.spk_ids = [label2id[i] for i in range(len(list(label2id.keys())))]
+            self.id2label = id2label
+            self.label2id = label2id
+            num_class_2 == len(self.spk_ids) # label encoder provides spk_ids info
+        
+        if len([kk for kk in [num_class_1, num_class_2] if kk is not None]) == 2:
+            assert num_class_1 == num_class_2
+            num_class = num_class_1
+        elif len([kk for kk in [num_class_1, num_class_2] if kk is not None]) == 1:
+            num_class = [kk for kk in [num_class_1, num_class_2] if kk is not None][0]
         else:
-            if label_encoder is not None:
-                # parser label info
-                id_label = np.loadtxt(label_encoder, dtype=str, converters={0: lambda s: s[1:-1]})
-                id2label = {}
-                label2id = {}
-                for row in id_label:
-                    id2label[row[0]] = int(row[1])
-                    label2id[int(row[1])] = row[0]
-                self.spk_ids = [label2id[i] for i in range(len(list(label2id.keys())))]
-                self.id2label = id2label
-                self.label2id = label2id
-                num_class = len(self.spk_ids)
-            else:
-                assert num_class is not None
+            assert num_class is not None
+        
         self.num_spks = num_class
         if not hasattr(self, 'spk_ids'):
             self.spk_ids = [str(i) for i in range(self.num_spks)]
