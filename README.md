@@ -66,7 +66,7 @@ Single speaker models for SV task are  stored as `speaker_model_iv_plda_{ID}` an
   `python adver_train.py -defense AT -defense_param 16 -defense_flag 0 -attacker PGD -epsilon 0.002 -max_iter 10 -EOT_size 10 -EOT_batch_size 5 -model_ckpt ./model_file/AT-16-pgd-adver-audionet -log ./model_file/AT-16-pgd-adver-audionet-log` 
 
 ## 1.4 Generate Adversarial Examples
-- Example 1: FAKEBOB attack on naturally-trained audionet model with QT-512
+- Example 1: FAKEBOB attack on naturally-trained audionet model with QT (q=512)
 
   `python attackMain.py -task CSI -root ./data -name Spk251_test -des ./adver-audio/QT-512-audionet-fakebob audionet_csine -extractor ./model_file/QT-512-natural-audionet FAKEBOB -epsilon 0.002`
 - Example 2: PGD targeted attack on FeCo-defended xvector-plda model for OSI task. FeCo is randomized, using EOT
