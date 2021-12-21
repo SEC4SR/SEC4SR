@@ -42,7 +42,7 @@ to enroll the speakers in Spk10_enroll for ivector-PLDA and xvector-PLDA systems
 Multiple speaker models for CSI-E and OSI tasks are stored as `speaker_model_iv_plda` and `speaker_model_xv_plda` inside `./model_file`. 
 Single speaker models for SV task are  stored as `speaker_model_iv_plda_{ID}` and `speaker_model_xv_plda_{ID}` inside `./model_file`.
 - Run `python set_threshold.py iv_plda` and 
-`python set_threshold.py xv_plda` to set the threshold of SV/OSI tasks (also test the EER and accuracy of CSI-E task).
+`python set_threshold.py xv_plda` to set the threshold of SV/OSI tasks (also test the EER of SV/OSI tasks and the accuracy of CSI-E task).
 
 ### 1.3.2 Natural Training (CSI-NE task)
 - Sole natural training: 
