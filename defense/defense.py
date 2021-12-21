@@ -11,7 +11,6 @@ Input_Transformation = [
     'OPUS', 'SPEEX', 'AMR', 'AAC_V', 'AAC_C', 'MP3_V', 'MP3_C', # Speech Compression
     'FEATURE_COMPRESSION', # Feature-Level,; Ours
     'FeCo', # Feature-Level,; Ours; abbr,
-    'REVER',
 ] 
 
 Robust_Training = [
@@ -26,10 +25,6 @@ Robust_Training = [
 #         defense_param = [float(defense_param[0]), float(defense_param[1])]
 #     elif defense == 'DS':
 #         defense_param = float(defense_param[0])
-#     elif defense == 'REVER':
-#         import pickle
-#         with open(defense_param[0], 'rb') as reader:
-#             defense_param = pickle.load(reader)
 #     elif defense:
 #         defense_param = int(defense_param[0])
 #     return defense_param
@@ -86,10 +81,6 @@ def lambda_defense(defense, defense_param):
             defense_param = [float(defense_param[0]), float(defense_param[1])]
         elif defense == 'DS':
             defense_param = float(defense_param[0])
-        elif defense == 'REVER':
-            import pickle
-            with open(defense_param[0], 'rb') as reader:
-                defense_param = pickle.load(reader)
         else:
             defense_param = int(defense_param[0])
         f = lambda x: ori_f(x, param=defense_param) 
