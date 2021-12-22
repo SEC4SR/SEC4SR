@@ -46,43 +46,52 @@ Single speaker models for SV task are  stored as `speaker_model_iv_plda_{ID}` an
 
 ### 1.3.2 Natural Training (CSI-NE task)
 - Sole natural training: 
-
-  `python natural_train.py -num_epoches 30 -batch_size 128 -model_ckpt ./model_file/natural-audionet -log ./model_file/natural-audionet-log`
+  ```
+  python natural_train.py -num_epoches 30 -batch_size 128 -model_ckpt ./model_file/natural-audionet -log ./model_file/natural-audionet-log
+  ```
 - Natural training with QT (q=512)
-
-  `python natural_train.py -defense QT -defense_param 512 -defense_flag 0 -model_ckpt ./model_file/QT-512-natural-audionet -log ./model_file/QT-512-natural-audionet-log`
-
+  ```
+  python natural_train.py -defense QT -defense_param 512 -defense_flag 0 -model_ckpt ./model_file/QT-512-natural-audionet -log ./model_file/QT-512-natural-audionet-log
+  ```
   Note: `-defense_flag 0` means QT operates at the waveform level.
 
 ### 1.3.3 Adversarial Training (CSI-NE task)
 - Sole FGSM adversarial training:
-  
-  `python adver_train.py -attacker FGSM -epsilon 0.002 -model_ckpt ./model_file/fgsm-adver-audionet -log ./model_file/fgsm-adver-audionet-log -evaluate_adver`
+  ```
+  python adver_train.py -attacker FGSM -epsilon 0.002 -model_ckpt ./model_file/fgsm-adver-audionet -log ./model_file/fgsm-adver-audionet-log -evaluate_adver
+  ```
 - Sole PGD adversarial training:
-
-  `python adver_train.py -attacker PGD -epsilon 0.002 -max_iter 10 -model_ckpt ./model_file/pgd-adver-audionet -log ./model_file/pgd-adver-audionet-log`
+  ```
+  python adver_train.py -attacker PGD -epsilon 0.002 -max_iter 10 -model_ckpt ./model_file/pgd-adver-audionet -log ./model_file/pgd-adver-audionet-log
+  ```
 - Combining adversarial training with input transformation AT (randomized, should use EOT during training)
-  
-  `python adver_train.py -defense AT -defense_param 16 -defense_flag 0 -attacker PGD -epsilon 0.002 -max_iter 10 -EOT_size 10 -EOT_batch_size 5 -model_ckpt ./model_file/AT-16-pgd-adver-audionet -log ./model_file/AT-16-pgd-adver-audionet-log` 
+    ```
+  python adver_train.py -defense AT -defense_param 16 -defense_flag 0 -attacker PGD -epsilon 0.002 -max_iter 10 -EOT_size 10 -EOT_batch_size 5 -model_ckpt ./model_file/AT-16-pgd-adver-audionet -log ./model_file/AT-16-pgd-adver-audionet-log
+  ```
 
 ## 1.4 Generate Adversarial Examples
 - Example 1: FAKEBOB attack on naturally-trained audionet model with QT (q=512)
+  ```
+  python attackMain.py -task CSI -root ./data -name Spk251_test -des ./adver-audio/QT-512-audionet-fakebob audionet_csine -extractor ./model_file/QT-512-natural-audionet FAKEBOB -epsilon 0.002
+  ```
 
-  `python attackMain.py -task CSI -root ./data -name Spk251_test -des ./adver-audio/QT-512-audionet-fakebob audionet_csine -extractor ./model_file/QT-512-natural-audionet FAKEBOB -epsilon 0.002`
 - Example 2: PGD targeted attack on FeCo-defended xvector-plda model for OSI task. FeCo is randomized, using EOT
-
-  `python attackMain.py -threshold 18.72 -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./data -name Spk10_imposter -des ./adver-audio/xv-pgd -task OSI -EOT_size 5 -EOT_batch_size 5 -targeted xv_plda -model_file ./model_file/xv_plda/speaker_model_xv_plda PGD -epsilon 0.002 -max_iter 5 -loss Margin`
+  ```
+  python attackMain.py -threshold 18.72 -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./data -name Spk10_imposter -des ./adver-audio/xv-pgd -task OSI -EOT_size 5 -EOT_batch_size 5 -targeted xv_plda -model_file ./model_file/xv_plda/speaker_model_xv_plda PGD -epsilon 0.002 -max_iter 5 -loss Margin
+  ```
 
   Note: `-defense_flag 1` means we want FeCo to operate at the raw acoustic feature level. 
   Set `-defense_flag 2` or `-defense_flag 3` for delta or cmvn acoustic feature level. 
 
 ## 1.5 Evaluate Adversarial Examples
 - Example 1: Testing for unadaptive attack
-
-  `python test_attack.py -defense QT -defense_param 512 -defense_flag 0 -root ./adver-audio -name QT-512-audionet-fakebob -root_ori ./data -name_ori Spk251_test audionet_csine -extractor ./model_file/QT-512-natural-audionet`
+  ```
+  python test_attack.py -defense QT -defense_param 512 -defense_flag 0 -root ./adver-audio -name QT-512-audionet-fakebob -root_ori ./data -name_ori Spk251_test audionet_csine -extractor ./model_file/QT-512-natural-audionet
+  ```
 - Example 2: Testing for adaptive attack
-
-  `python test_attack.py -threshold 18.72 -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./adver-audio -name xv-pgd xv_plda -model_file ./model_file/xv_plda/speaker_model_xv_plda`
+  ```
+  python test_attack.py -threshold 18.72 -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./adver-audio -name xv-pgd xv_plda -model_file ./model_file/xv_plda/speaker_model_xv_plda
+  ```
 
 In Example 1, the adversarial examples are generated on undefended audionet model, but tested on QT-defended audionet model, so it is **non-adaptive** attack.
 
@@ -95,8 +104,9 @@ By default, targeted attack randomly selects the targeted label. If you want to 
 `test_attack.py` can also be used to test the benign accuracy of systems. Just let `-root` and `-name` point to the benign dataset.
 
 You can also try the combination of different transformation-based defenses, e.g., 
-`-defense QT AT FeCo -defense_param 512 16 "kmeans 0.5 L2" -defense_flag 0 0 1 -defense_order sequential`
-
+```
+-defense QT AT FeCo -defense_param 512 16 "kmeans 0.5 L2" -defense_flag 0 0 1 -defense_order sequential
+```
 where `-defense_order` specifies the combination way (sequential or average).
 
 # 2. Extension
