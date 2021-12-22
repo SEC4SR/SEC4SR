@@ -24,16 +24,17 @@ The instruction targets Ubuntu. For other Linux distributions, you may need to m
   `sudo apt-get install pkg-config`
 
   if you are ordinary user: 
-  
-  - `wget https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz`
+  ```
+  wget https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz
 
-  - `tar -xzvf pkg-config-0.29.2.tar.gz`
+  tar -xzvf pkg-config-0.29.2.tar.gz
 
-  - `cd pkg-config-0.29.2.tar.gz`
+  cd pkg-config-0.29.2.tar.gz
 
-  - `./configure --prefix=$HOME/.local`
+  ./configure --prefix=$HOME/.local
 
-  - `make; make install`
+  make; make install
+  ```
 
 ## step 3: download the external en-/de-coders and install them
 Download links:
@@ -51,17 +52,17 @@ Download links:
 - [AAC](https://sourceforge.net/projects/opencore-amr/files/fdk-aac)
 
 Install command:
+```
+tar -xzvf XXX
 
-- `tar -xzvf XXX`
+cd XXX
 
-- `cd XXX`
+./configure --prefix $HOME/.local
 
-- `./configure --prefix $HOME/.local`
+make; make install
 
-- `make; make install`
-
-- `make check`
-
+make check
+```
 Note: replece XXX with the downloaded file name of en-/de-coders.
 
 ## step 4: install ffmpeg
@@ -74,7 +75,7 @@ or
     `export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig/` 
 
     (depending on your installed path of pkg-config) -->
-- `export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig/`
+<!-- - `export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig/`
 
 - `git clone https://git.ffmpeg.org/ffmpeg.git`
 
@@ -82,16 +83,30 @@ or
 
 - `./configure --prefix=$HOME/.local/ffmpeg --disable-x86asm --enable-version3 --enable-libspeex --enable-libopus --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-shared --enable-libmp3lame --enable-libvo_amrwbenc --enable-libfdk-aac --extra-ldflags=-L$HOME/.local/lib --extra-cflags=-I$HOME/.local/include`
 
-- `make; make install`
+- `make; make install` -->
+
+```
+export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig/
+
+git clone https://git.ffmpeg.org/ffmpeg.git
+
+cd ffmpeg
+
+./configure --prefix=$HOME/.local/ffmpeg --disable-x86asm --enable-version3 --enable-libspeex --enable-libopus --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-shared --enable-libmp3lame --enable-libvo_amrwbenc --enable-libfdk-aac --extra-ldflags=-L$HOME/.local/lib --extra-cflags=-I$HOME/.local/include
+
+make; make install
+```
 
 ## step 5: set the environment variable
 
 - `vim ~/.bashrc`
 
 - insert the following commands:
-  - `export PATH=$HOME/.local/ffmpeg/bin:$PATH`
+  ```
+  export PATH=$HOME/.local/ffmpeg/bin:$PATH
 
-  - `export LD_LIBRARY_PATH=$HOME/.local/ffmpeg/lib:$HOME/.local/lib:$LD_LIBRARY_PATH`
+  export LD_LIBRARY_PATH=$HOME/.local/ffmpeg/lib:$HOME/.local/lib:$LD_LIBRARY_PATH
+  ```
   
 - `source ~/.bashrc`
 
