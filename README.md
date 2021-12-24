@@ -21,22 +21,22 @@ If you want to use speech_compression methods in `defense/speech_compression.py`
 ## 1.2 Dataset Preparation
 We provide five datasets, namely, Spk10_enroll, Spk10_test, Spk10_imposter, Spk251_train and Spk_251_test. They cover all the recognition tasks (i.e., CSI-E, CSI-NE, SV and OSI). The code in `./dataset/Dataset.py` will download them automatically when they are used. You can also manually download them using the follwing links:
 
-[Spk10_enroll, 18MB, MD5:0e90fb00b69989c0dde252a585cead85](https://drive.google.com/uc?id=1BBAo64JOahk0F3yBAovnRLZ1NvjwBy7y&export\=download)
+[Spk10_enroll.tar.gz, 18MB, MD5:0e90fb00b69989c0dde252a585cead85](https://drive.google.com/uc?id=1BBAo64JOahk0F3yBAovnRLZ1NvjwBy7y&export\=download)
 
-[Spk10_test, 114MB, MD5:b0f8eb0db3d2eca567810151acf13f16](https://drive.google.com/uc?id=1WctqJtP5Es74-U7y3cFXqfHi7JkDz6g5&export\=download)
+[Spk10_test.tar.gz, 114MB, MD5:b0f8eb0db3d2eca567810151acf13f16](https://drive.google.com/uc?id=1WctqJtP5Es74-U7y3cFXqfHi7JkDz6g5&export\=download)
 
-[Spk10_imposter, 212MB, MD5:42abd80e27b78983a13b74e44a67be65](https://drive.google.com/uc?id=1f1GULs0aj_Xrw8JRxe6zzvTN3r2nnOf6&export\=download)
+[Spk10_imposter.tar.gz, 212MB, MD5:42abd80e27b78983a13b74e44a67be65](https://drive.google.com/uc?id=1f1GULs0aj_Xrw8JRxe6zzvTN3r2nnOf6&export\=download)
 
-[Spk251_train, 10GB, MD5:02bee7caf460072a6fc22e3666ac2187](https://drive.google.com/uc?id=1iGcMPiPMzcCLI7xKJLwH1L0Ff_95-tmB&export\=download)
+[Spk251_train.tar.gz, 10GB, MD5:02bee7caf460072a6fc22e3666ac2187](https://drive.google.com/uc?id=1iGcMPiPMzcCLI7xKJLwH1L0Ff_95-tmB&export\=download)
 
-[Spk251_test, 1GB, MD5:182dd6b17f8bcfed7a998e1597828ed6](https://drive.google.com/uc?id=1rsXzuEyi5Zqd1XAsr1_Op7mC7hqY0tsp&export\=download)
+[Spk251_test.tar.gz, 1GB, MD5:182dd6b17f8bcfed7a998e1597828ed6](https://drive.google.com/uc?id=1rsXzuEyi5Zqd1XAsr1_Op7mC7hqY0tsp&export\=download)
 
 After downloading, untar them inside `./data` directory.
 
 ## 1.3 Model Preparation
 ### 1.3.1 Speaker Enroll (CSI-E/SV/OSI tasks)
 <!-- - Download [iv_system, MD5:bfe90ec7782b54dc295e72b5bf789377](https://drive.google.com/uc?id=13yDZvM6a7W1Str2KEI7Vrm2xSdxWe7Vv&export\=download) and [xv_system, MD5:37cb3e7ca48c0da3ae72a35195aacf58](https://drive.google.com/uc?id=1HbpR6cUuPzDQLVvQTFUpIAflEa1eP-XF&export\=download), and untar them inside the reposity directory (i.e., `./`). Iv_system and xv_system contain the pre-trained ivector-PLDA and xvector-PLDA background models. -->
-- Download [pre-trained-models, MD5:b011ead1e6663d557afa9e037f30a866](https://drive.google.com/uc?id=1kxsSr7V_DbPloUPeqgsxUbuHsV6rBveH&export\=download) and untar it inside the reposity directory (i.e., `./`). It contains the pre-trained ivector-PLDA and xvector-PLDA background models.
+- Download [pre-trained-models.tar.gz, 340MB, MD5:b011ead1e6663d557afa9e037f30a866](https://drive.google.com/uc?id=1kxsSr7V_DbPloUPeqgsxUbuHsV6rBveH&export\=download) and untar it inside the reposity directory (i.e., `./`). It contains the pre-trained ivector-PLDA and xvector-PLDA background models.
 - Run `python enroll.py iv_plda` and `python enroll.py xv_plda` 
 to enroll the speakers in Spk10_enroll for ivector-PLDA and xvector-PLDA systems. 
 Multiple speaker models for CSI-E and OSI tasks are stored as `speaker_model_iv_plda` and `speaker_model_xv_plda` inside `./model_file`. 
