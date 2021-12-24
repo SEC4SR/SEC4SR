@@ -36,7 +36,7 @@ After downloading, untar them inside `./data` directory.
 ## 1.3 Model Preparation
 ### 1.3.1 Speaker Enroll (CSI-E/SV/OSI tasks)
 <!-- - Download [iv_system, MD5:bfe90ec7782b54dc295e72b5bf789377](https://drive.google.com/uc?id=13yDZvM6a7W1Str2KEI7Vrm2xSdxWe7Vv&export\=download) and [xv_system, MD5:37cb3e7ca48c0da3ae72a35195aacf58](https://drive.google.com/uc?id=1HbpR6cUuPzDQLVvQTFUpIAflEa1eP-XF&export\=download), and untar them inside the reposity directory (i.e., `./`). Iv_system and xv_system contain the pre-trained ivector-PLDA and xvector-PLDA background models. -->
-- Download [pre-trained-models, MD5:bfe90ec7782b54dc295e72b5bf789377](https://drive.google.com/uc?id=1kxsSr7V_DbPloUPeqgsxUbuHsV6rBveH&export\=download) and untar it inside the reposity directory (i.e., `./`). It contains the pre-trained ivector-PLDA and xvector-PLDA background models.
+- Download [pre-trained-models, MD5:b011ead1e6663d557afa9e037f30a866](https://drive.google.com/uc?id=1kxsSr7V_DbPloUPeqgsxUbuHsV6rBveH&export\=download) and untar it inside the reposity directory (i.e., `./`). It contains the pre-trained ivector-PLDA and xvector-PLDA background models.
 - Run `python enroll.py iv_plda` and `python enroll.py xv_plda` 
 to enroll the speakers in Spk10_enroll for ivector-PLDA and xvector-PLDA systems. 
 Multiple speaker models for CSI-E and OSI tasks are stored as `speaker_model_iv_plda` and `speaker_model_xv_plda` inside `./model_file`. 
