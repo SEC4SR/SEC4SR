@@ -46,19 +46,19 @@ class SEC4SR_MarginLoss(nn.Module): # deal with something special on top of Marg
         confidence = torch.tensor(self.confidence, dtype=torch.float, device=device)
 
         if self.task == 'SV':
-            enroll_index = torch.nonzero(label == 0, as_tuple=True)[0].detach().cpu().numpy().tolist() # enroll --> imposter, Denial of Service
-            imposter_index = torch.nonzero(label == -1, as_tuple=True)[0].detach().cpu().numpy().tolist() # imposter --> enroll
+            enroll_index = torch.nonzero(label == 0, as_tuple=True)[0].detach().cpu().numpy().tolist() 
+            imposter_index = torch.nonzero(label == -1, as_tuple=True)[0].detach().cpu().numpy().tolist() 
             assert len(enroll_index) + len(imposter_index) == label.shape[0], 'SV task should not have labels out of 0 and -1'
             if len(enroll_index) > 0:
                 if self.targeted: 
-                    loss[enroll_index] = self.threshold + confidence - scores[enroll_index].squeeze(1) # imposter --> enroll
+                    loss[enroll_index] = self.threshold + confidence - scores[enroll_index].squeeze(1) # imposter --> enroll, authentication bypass
                 else:
-                    loss[enroll_index] = scores[enroll_index].squeeze(1) + confidence - self.threshold # enroll --> imposter
+                    loss[enroll_index] = scores[enroll_index].squeeze(1) + confidence - self.threshold # enroll --> imposter, Denial of Service
             if len(imposter_index) > 0:
                 if self.targeted:
-                    loss[imposter_index] = scores[imposter_index].squeeze(1) + confidence - self.threshold # enroll --> imposter
+                    loss[imposter_index] = scores[imposter_index].squeeze(1) + confidence - self.threshold # enroll --> imposter, Denial of Service
                 else:
-                    loss[imposter_index] = self.threshold + confidence - scores[imposter_index].squeeze(1) # imposter --> enroll
+                    loss[imposter_index] = self.threshold + confidence - scores[imposter_index].squeeze(1) # imposter --> enroll, authentication bypass
         
         elif self.task == 'CSI' or self.task == 'OSI':
             # remove imposter index which is unmeaningful for CSI task
