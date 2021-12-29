@@ -74,8 +74,12 @@ class SEC4SR_MarginLoss(nn.Module): # deal with something special on top of Marg
                     loss[consider_index] = score_other + confidence - score_real if self.task == 'CSI' \
                         else torch.clamp(score_other, min=self.threshold) + confidence - score_real
                 else:
-                    loss[consider_index] = score_real + confidence - score_other if self.task == 'CSI' \
-                        else torch.clamp(score_real, min=self.threshold) + confidence - score_other 
+                    if self.task == 'CSI':
+                        loss[consider_index] = score_real + confidence - score_other
+                    else:
+                        f_reject = torch.max(scores[consider_index], 1)[0] + confidence - self.threshold # spk m --> reject
+                        f_mis = torch.clamp(score_real, min=self.threshold) + confidence - score_other # spk_m --> spk_n
+                        loss[consider_index] = torch.minimum(f_reject, f_mis)
             
             imposter_index = torch.nonzero(label == -1, as_tuple=True)[0].detach().cpu().numpy().tolist()
             if self.task == 'OSI':
