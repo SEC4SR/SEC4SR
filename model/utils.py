@@ -1,4 +1,5 @@
 
+import warnings
 import numpy as np
 import torch
 import pickle
@@ -41,6 +42,9 @@ def parse_enroll_model_file(model_file, device):
             enroll_embs = emb
         else:
             enroll_embs = torch.cat([enroll_embs, emb], dim=0)
+    
+    if len(spk_ids) > 1:
+        warnings.warn('There are more than one speakers in the model_file. Make sure you are not targeting SV task, since SV task should have exactly one enrolled speaker.')
     
     return num_spks, spk_ids, z_norm_means, z_norm_stds, enroll_embs
 
