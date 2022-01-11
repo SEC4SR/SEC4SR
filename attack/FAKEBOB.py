@@ -1,3 +1,9 @@
+
+'''
+FAKEBOB attack was proposed in the paper "Who is real Bob? Adversarial Attacks on Speaker Recognition Systems" 
+accepted by the conference IEEE S&P (Oakland) 2021.
+'''
+
 from attack.Attack import Attack
 from attack.utils import resolve_loss
 from adaptive_attack.NES import NES
