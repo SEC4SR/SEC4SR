@@ -167,10 +167,14 @@ def warped_kmeans(feat, param=0.5, delta=0., other_param="random"):
 
 def kmeans(feat, param=0.5, other_param="L2", force=True):
 
+    # def get_device(name):
+    #     if str(name) == "cpu":
+    #         name = torch.device("cuda:0")
+    #     return int(str(name).split(":")[1]) + 1 # Wrong
     def get_device(name):
         if str(name) == "cpu":
             name = torch.device("cuda:0")
-        return int(str(name).split(":")[1]) + 1
+        return 2 ** (int(str(name).split(":")[1])) # kmeans_cuda using bitwise OR to indicate the cuda device, e.g., 1--> cuda:0, 2-->cuda:1, 4-->cuda:2, 8-->cuda:3
 
     distance = other_param
     assert torch.is_tensor(feat) == True
