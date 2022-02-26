@@ -186,7 +186,7 @@ def kmeans(feat, param=0.5, other_param="L2", force=True):
     k = int(n * ratio)
     device = feat.device
 
-    # query the oracle of kmeans to obtain the clustering results
+    # invoke kmeans to obtain the clustering results
     if torch.cuda.is_available() and distance == 'L2': # when GPU available, using kmeans_cuda (not support COS distance well)
         x = feat.clone().detach().cpu().numpy() # kmeans_cuda runs on numpy
         _, cluster_ids = kmeans_cuda(x, k, verbosity=0, device=get_device(device), yinyang_t=0., metric=distance)
@@ -198,8 +198,8 @@ def kmeans(feat, param=0.5, other_param="L2", force=True):
         cluster_ids, _ = kmeans_pytorch(feat, k, distance=distance_, device=device) # will display lots of useless log TODO: disable the log by adding a parameter 'tqdm_flag'
         cluster_ids = cluster_ids.numpy()
 
-    ## tricky way to make 'FeCo' differentiable ##
-    ## also deal with possible Nan problem (sometimes some clusters will contain no any vectors) ##
+    ## tricky way to make 'FeCo' differentiable (with the help of automatic differentiation supported by Pytorch) ##
+    ## also deal with possible Nan problem (in rare cases, a very few clusters will contain no any vectors) ##
     y = None
     for i in range(k):
         ids = np.argwhere(cluster_ids == i).flatten()
