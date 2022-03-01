@@ -65,7 +65,7 @@ def main(args):
             if not os.path.exists(des_path):
                 os.makedirs(des_path)
             emb_path = '{}/{}.{}'.format(des_path, spk_id, args.system_type) if defense is None else \
-                '{}/{}.{}-{}'.format(des_dir, spk_id, args.system_type, defense_name)
+                '{}/{}.{}-{}'.format(des_path, spk_id, args.system_type, defense_name)
             torch.save(emb, emb_path)
 
             spk_nontarget_scores = []
