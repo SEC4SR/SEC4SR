@@ -1,5 +1,6 @@
 
 import pickle
+import os
 import torch
 import torch.nn as nn
 import torchaudio
@@ -25,24 +26,35 @@ class iv_plda(nn.Module):
         self.fgmm_file = fgmm_file
         self.extractor_file = extractor_file
         self.plda_file = plda_file
-
-        self.fgmm = FullGMM(self.fgmm_file)
-        self.extractor = ivectorExtractor(self.extractor_file)
-        self.plda = PLDA(self.plda_file)
-        # for quick load and debug
-        # import pickle
-        # with open("fgmm.pickle", "wb") as writer:
-        #     pickle.dump(self.fgmm, writer, -1)
-        # with open("extractor.pickle", "wb") as writer:
-        #     pickle.dump(self.extractor, writer, -1)
-        # with open("plda.pickle", "wb") as writer:
-        #     pickle.dump(self.plda, writer, -1)
-        # with open("pre-trained-models/iv_plda/fgmm.pickle", "rb") as reader:
-        #     self.fgmm = pickle.load(reader)
-        # with open("pre-trained-models/iv_plda/extractor.pickle", "rb") as reader:
-        #     self.extractor = pickle.load(reader)
-        # with open("pre-trained-models/iv_plda/plda.pickle", "rb") as reader:
-        #     self.plda = pickle.load(reader)
+        
+        ## using cache to save time since the from-scratch loading of the model is time consuming
+        fgmm_cache_path = "{}/fgmm.pickle".format(os.path.dirname(fgmm_file))
+        if not os.path.exists(fgmm_cache_path):
+            self.fgmm = FullGMM(self.fgmm_file)
+            with open(fgmm_cache_path, "wb") as writer:
+                pickle.dump(self.fgmm, writer, -1)
+        else:
+            with open(fgmm_cache_path, "rb") as reader:
+                self.fgmm = pickle.load(reader)
+        
+        extractor_cache_path = "{}/extractor.pickle".format(os.path.dirname(extractor_file))
+        if not os.path.exists(extractor_cache_path):
+            self.extractor = ivectorExtractor(self.extractor_file)
+            with open(extractor_cache_path, "wb") as writer:
+                pickle.dump(self.extractor, writer, -1)
+        else:
+            with open(extractor_cache_path, "rb") as reader:
+                self.extractor = pickle.load(reader)
+        
+        plda_cache_path = "{}/plda.pickle".format(os.path.dirname(plda_file))
+        if not os.path.exists(plda_cache_path):
+            self.plda = PLDA(self.plda_file)
+            with open(plda_cache_path, "wb") as writer:
+                pickle.dump(self.plda, writer, -1)
+        else:
+            with open(plda_cache_path, "rb") as reader:
+                self.plda = pickle.load(reader)
+                
         if self.fgmm.device != self.device:
             self.fgmm.to(self.device)
         if self.extractor.device != self.device:
