@@ -21,13 +21,14 @@ def DS(audio, param=0.5, fs=16000, same_size=True):
     
     down_ratio = param
     new_freq = int(fs * down_ratio)
-    resampler = torchaudio.transforms.Resample(orig_freq=fs, new_freq=new_freq, resampling_method='sinc_interpolation')
-    up_sampler = torchaudio.transforms.Resample(orig_freq=new_freq, new_freq=fs, resampling_method='sinc_interpolation')
+    resampler = torchaudio.transforms.Resample(orig_freq=fs, new_freq=new_freq, resampling_method='sinc_interpolation').to(audio.device)
+    up_sampler = torchaudio.transforms.Resample(orig_freq=new_freq, new_freq=fs, resampling_method='sinc_interpolation').to(audio.device)
     down_audio = resampler(audio)
     new_audio = up_sampler(down_audio)
-    if new_audio.shape != audio.shape and same_size: ## sometimes the returned audio may have longer size (usually 1 point)
-        return new_audio[..., :audio.shape[1]]
-    return new_audio.view(ori_shape)
+    if same_size: ## sometimes the returned audio may have longer size (usually 1 point)
+        return new_audio[..., :audio.shape[1]].view(ori_shape)
+    else:
+        return new_audio.view(ori_shape[:-1] + new_audio.shape[-1:])
 
 def LPF(new, fs=16000, wp=4000, param=8000, gpass=3, gstop=40, same_size=True):
 
