@@ -7,19 +7,16 @@ import pickle
 def check_input_range(x, BITS=16, range_type='scale'):
     
     assert range_type in ['scale', 'origin']
-    if range_type == 'scale':
-        upper = 1
-        lower = -1
-        f = lambda i: i / (2 ** (BITS-1))
-    else:
-        upper = 2 ** (BITS-1) -1
-        lower = 2 ** (BITS-1)
-        f = lambda i: i * (2 ** (BITS-1))
 
-    if not (0.9 * x.max() <= upper and 0.9 * x.min() >= lower):
-        x = f(x)
-    
-    return x
+    ori_type = 'scale' if 0.9 * x.max() <= 1 and 0.9 * x.min() >= -1 else 'origin'
+    if range_type != ori_type:
+        if ori_type == 'scale' and range_type == 'origin':
+            x = x * (2 ** (BITS-1))
+        else:
+            x = x / (2 ** (BITS-1))
+        return x
+    else:
+        return x
 
 def parse_enroll_model_file(model_file, device):
 
