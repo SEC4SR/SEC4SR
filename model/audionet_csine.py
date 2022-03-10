@@ -153,7 +153,7 @@ class audionet_csine(nn.Module):
         """
         assert flag in self.allowed_flags
         if flag == 0:
-            x = check_input_range(x, range_type=self.range_type)
+            # x = check_input_range(x, range_type=self.range_type) # no need, since compute_feat will check
             feats = self.compute_feat(x, flag=self.allowed_flags[-1])
         elif flag == 1:
             feats = x
