@@ -27,7 +27,8 @@ def QT_Non_Diff(audio, param=128, bits=16, same_size=True):
     lower = -1 
     upper = 1
     # print('QT-1:', audio.max(), audio.min())
-    if audio.min() >= 2 * lower and audio.max() <= 2 * upper: # 2*lower and 2*upper due to floating point issue, e.g., sometimes will have 1.0002
+    # if audio.min() >= 2 * lower and audio.max() <= 2 * upper: # 2*lower and 2*upper due to floating point issue, e.g., sometimes will have 1.0002
+    if 0.9 * audio.max() <= 1 and 0.9 * audio.min() >= -1:
         audio = audio * abs_max
         scale = True
     # print('QT-2:', audio.max(), audio.min())
