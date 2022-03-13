@@ -188,7 +188,8 @@ def kmeans(feat, param=0.5, other_param="L2", force=True):
 
     # invoke kmeans to obtain the clustering results
     if torch.cuda.is_available() and distance == 'L2': # when GPU available, using kmeans_cuda (not support COS distance well)
-        x = feat.clone().detach().cpu().numpy() # kmeans_cuda runs on numpy
+        # x = feat.clone().detach().cpu().numpy() # kmeans_cuda runs on numpy
+        x = feat.clone().detach().cpu().numpy().astype(np.float32) # kmeans_cuda runs on numpy (np.float16 or np.float32)
         _, cluster_ids = kmeans_cuda(x, k, verbosity=0, device=get_device(device), yinyang_t=0., metric=distance)
     else: 
         # When no GPU or using cosine distance, use another version of kmeans algo
