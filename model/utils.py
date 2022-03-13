@@ -20,7 +20,8 @@ def check_input_range(x, BITS=16, range_type='scale'):
 
 def parse_enroll_model_file(model_file, device):
 
-    model_info = np.loadtxt(model_file, dtype=str)
+    # model_info = np.loadtxt(model_file, dtype=str)
+    model_info = np.loadtxt(model_file, dtype=str, comments=None) # set comments to None since the model_file may contain '#' symbol when using defense
     if len(model_info.shape) == 1:
         model_info = model_info[np.newaxis, :] # for SV
     num_spks = model_info.shape[0]
