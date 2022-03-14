@@ -10,9 +10,9 @@ class SirenAttack(Attack):
 
     def __init__(self, model, threshold=None, 
                 task='CSI', targeted=False, confidence=0.,
-                epsilon=0.002, max_epoch=30, max_iter=300,
-                c1=1.4961, c2=1.4961, n_particles=50, w_init=0.9, w_end=0.1,
-                batch_size=1, EOT_size=1, EOT_batch_size=1, verbose=1):
+                epsilon=0.002, max_epoch=300, max_iter=30,
+                c1=1.4961, c2=1.4961, n_particles=25, w_init=0.9, w_end=0.1,
+                batch_size=1, EOT_size=1, EOT_batch_size=1, verbose=1, abort_early=True, abort_early_iter=10, abort_early_epoch=10):
         
         self.model = model
         self.threshold = threshold
@@ -31,22 +31,31 @@ class SirenAttack(Attack):
         self.EOT_size = EOT_size
         self.EOT_batch_size = EOT_batch_size
         self.verbose = verbose
+
+        self.abort_early = abort_early
+        self.abort_early_iter = abort_early_iter
+        self.abort_early_epoch = abort_early_epoch
     
 
     def attack_batch(self, x_batch, y_batch, lower, upper, batch_id):
 
         with torch.no_grad():
 
+            v_upper = torch.abs(lower - upper)
+            v_lower = -v_upper
+
             x_batch_clone = x_batch.clone() # for return
             n_audios, n_channels, N = x_batch.shape
             consider_index = list(range(n_audios))
-            pbest_locations = np.random.uniform(low=lower.unsqueeze(1).cpu().numpy(),
-                                high=upper.unsqueeze(1).cpu().numpy(), size=(n_audios, self.n_particles, n_channels, N))
-            pbest_locations = torch.tensor(pbest_locations, device=x_batch.device, dtype=torch.float)
+            # pbest_locations = np.random.uniform(low=lower.unsqueeze(1).cpu().numpy(),
+            #                     high=upper.unsqueeze(1).cpu().numpy(), size=(n_audios, self.n_particles, n_channels, N))
+            # pbest_locations = torch.tensor(pbest_locations, device=x_batch.device, dtype=torch.float)
 
             gbest_location = torch.zeros(n_audios, n_channels, N, dtype=torch.float, device=x_batch.device)
             gbests = torch.ones(n_audios, device=x_batch.device, dtype=torch.float) * np.infty
             gbest_predict = np.array([None] * n_audios)
+            prev_gbest = gbests.clone()
+            prev_gbest_epoch = gbests.clone()
 
             continue_flag = True
             for epoch in range(self.max_epoch):
@@ -54,14 +63,38 @@ class SirenAttack(Attack):
                 if not continue_flag:
                     break
 
+                if epoch == 0:
+                    pbest_locations = np.random.uniform(low=lower.unsqueeze(1).cpu().numpy(),
+                                high=upper.unsqueeze(1).cpu().numpy(), size=(n_audios, self.n_particles, n_channels, N))
+                    pbest_locations = torch.tensor(pbest_locations, device=x_batch.device, dtype=torch.float)
+                    pbests = torch.ones(n_audios, self.n_particles, device=x_batch.device, dtype=torch.float) * np.infty
+                else:
+                    best_index = torch.argmin(pbests, dim=1) # (len(consider_index), )
+                    best_location = pbest_locations[np.arange(len(consider_index)), best_index] # (len(consider_index), n_channels, N)
+                    pbest_locations = np.random.uniform(low=lower.unsqueeze(1).cpu().numpy(),
+                                high=upper.unsqueeze(1).cpu().numpy(), size=(len(consider_index), self.n_particles-1, n_channels, N))
+                    pbest_locations = torch.tensor(pbest_locations, device=x_batch.device, dtype=torch.float)
+                    pbest_locations = torch.cat((best_location.unsqueeze(1), pbest_locations), dim=1)
+                    pbests_new = torch.ones(len(consider_index), self.n_particles-1, device=x_batch.device, dtype=torch.float) * np.infty
+                    pbests = torch.cat((pbests[np.arange(len(consider_index)), best_index].unsqueeze(1), pbests_new), dim=1)
+
                 locations = pbest_locations.clone()
-                volicities = np.random.uniform(low=lower.unsqueeze(1).cpu().numpy(),
-                                high=upper.unsqueeze(1).cpu().numpy(), size=(len(consider_index), self.n_particles, n_channels, N))
+                # volicities = np.random.uniform(low=lower.unsqueeze(1).cpu().numpy(),
+                #                 high=upper.unsqueeze(1).cpu().numpy(), size=(len(consider_index), self.n_particles, n_channels, N))
+                volicities = np.random.uniform(low=v_lower.unsqueeze(1).cpu().numpy(),
+                                high=v_upper.unsqueeze(1).cpu().numpy(), size=(len(consider_index), self.n_particles, n_channels, N))
                 volicities = torch.tensor(volicities, device=x_batch.device, dtype=torch.float)
 
-                pbests = torch.ones(len(consider_index), self.n_particles, device=x_batch.device, dtype=torch.float) * np.infty
+                ### ????
+                # pbests = torch.ones(len(consider_index), self.n_particles, device=x_batch.device, dtype=torch.float) * np.infty
 
-                for iter in range(self.max_iter):
+                continue_flag_inner = True
+
+                # for iter in range(self.max_iter):
+                for iter in range(self.max_iter+1):
+
+                    if not continue_flag_inner:
+                        break
 
                     eval_x = locations + x_batch.unsqueeze(1) # (n_audios, self.n_particles, n_channels, N)
                     eval_x = eval_x.view(-1, n_channels, N)
@@ -72,6 +105,7 @@ class SirenAttack(Attack):
                             eval_y = tmp
                         else:
                             eval_y = torch.cat((eval_y, tmp))
+                    # print(eval_x.shape, eval_y.shape)
                     _, loss, _, decisions = self.EOT_wrapper(eval_x, eval_y)
                     EOT_num_batches = int(self.EOT_wrapper.EOT_size // self.EOT_wrapper.EOT_batch_size)
                     loss.data /= EOT_num_batches # (n_audios*n_p,)
@@ -86,10 +120,13 @@ class SirenAttack(Attack):
                             pbests[ii, jj] = loss[ii, jj]
                             pbest_locations[ii, jj, ...] = locations[ii, jj, ...]
                     
+                    # if self.abort_early and (iter+1) % self.abort_early_iter == 0:
+                    #     prev_gbest.data = gbests
+                    
                     gbest_index = torch.argmin(pbests, 1)
                     for kk in range(gbest_index.shape[0]):
-                        index = consider_index[kk] 
-                        if pbests[kk, gbest_index[kk]] < gbests[index]: 
+                        index = consider_index[kk]
+                        if pbests[kk, gbest_index[kk]] < gbests[index]:
                             gbests[index] = pbests[kk, gbest_index[kk]]
                             gbest_location[index] = pbest_locations[kk, gbest_index[kk]]
                             gbest_predict[index] = predict[kk, gbest_index[kk]]
@@ -97,6 +134,14 @@ class SirenAttack(Attack):
                     if self.verbose:
                         print('batch: {}, epoch: {}, iter: {}, y: {}, y_pred: {}, gbest: {}'.format(batch_id,
                             epoch, iter, y_batch.cpu().numpy().tolist(), gbest_predict[consider_index], gbests[consider_index].cpu().numpy().tolist()))
+                    
+                    if self.abort_early and (iter+1) % self.abort_early_iter == 0:
+                        if torch.mean(gbests) > 0.9999 * torch.mean(prev_gbest):
+                            print('Converge, Break Inner Loop')
+                            continue_flag_inner = False
+                            # break
+                        # prev_gbest.data = gbests
+                        prev_gbest = gbests.clone()
 
                     # stop early
                     # x_batch, y_batch, lower, upper
@@ -111,14 +156,29 @@ class SirenAttack(Attack):
                     if len(consider_index) == 0:
                         continue_flag = False # used to break the outer loop
                         break
+                    else:
+                        v_upper = torch.abs(lower - upper)
+                        v_lower = -v_upper
 
-                    w = (self.w_init - self.w_end) * (self.max_iter - iter - 1) / self.max_iter + self.w_end
-                    r1 = np.random.rand() + 0.00001
-                    r2 = np.random.rand() + 0.00001
-                    volicities = (w * volicities + self.c1 * r1 * (pbest_locations - locations) +
-                              self.c2 * r2 * (gbest_location[consider_index, ...].unsqueeze(1) - locations))
-                    locations = locations + volicities
-                    locations = torch.min(torch.max(locations, lower.unsqueeze(1)), upper.unsqueeze(1))
+                    if iter < self.max_iter:
+                        w = (self.w_init - self.w_end) * (self.max_iter - iter - 1) / self.max_iter + self.w_end
+                        # r1 = np.random.rand() + 0.00001
+                        # r2 = np.random.rand() + 0.00001
+                        r1 = np.random.rand(len(consider_index), self.n_particles, n_channels, N) + 0.00001
+                        r2 = np.random.rand(len(consider_index), self.n_particles, n_channels, N) + 0.00001
+                        r1 = torch.tensor(r1, device=x_batch.device, dtype=torch.float)
+                        r2 = torch.tensor(r2, device=x_batch.device, dtype=torch.float)
+                        volicities = (w * volicities + self.c1 * r1 * (pbest_locations - locations) +
+                                self.c2 * r2 * (gbest_location[consider_index, ...].unsqueeze(1) - locations))
+                        locations = locations + volicities
+                        locations = torch.min(torch.max(locations, lower.unsqueeze(1)), upper.unsqueeze(1))
+                
+                if self.abort_early and (epoch+1) % self.abort_early_epoch == 0:
+                    if torch.mean(gbests) > 0.9999 * torch.mean(prev_gbest_epoch):
+                        print('Converge, Break Outer Loop')
+                        continue_flag = False
+                        # break
+                    prev_gbest_epoch = gbests.clone()
             
             success = [False] * n_audios
             for kk, best_l in enumerate(gbests):
