@@ -4,6 +4,10 @@ Part of the code is drawn from
 https://github.com/lixucuhk/adversarial-attack-on-GMM-i-vector-based-speaker-verification-systems
 Paper:
 Adversarial Attacks on GMM i-vector based Speaker Verification Systems
+
+I made some improvements by removing the naive loop in "Zeroth_First_Stats" 
+and adding support for processing multiple frames in parallel in "ComponentLogLikelihood". 
+These improvements greatly speed up the computation.
 '''
 
 import torch
@@ -90,24 +94,42 @@ class FullGMM(object):
 				new_matrix[i][j] = matrix[j][i]
 
 		return new_matrix
+	
+# 	def ComponentLogLikelihood(self, data):
+# 		# loglike = torch.zeros(self.num_gaussians)
+# 		loglike = torch.matmul(self.means_invcovars, data)
+# 		# print('!!!!!!!!!!!!!!!!!!')
+# 		# print(loglike)
+# 		loglike -= 0.5*torch.matmul(torch.matmul(self.invcovars, data), data)
+# 		# print('!!!!!!!!!!!!!!!!!!')
+# 		# print(loglike)
+# 		loglike += self.gconsts
+# 		# print('!!!!!!!!!!!!!!!!!!')
+# 		# print(loglike)
+# 		# print('!!!!!!!!!!!!!!!!!!')
 
-	def ComponentLogLikelihood(self, data):
-		# loglike = torch.zeros(self.num_gaussians)
-		loglike = torch.matmul(self.means_invcovars, data)
-		# print('!!!!!!!!!!!!!!!!!!')
-		# print(loglike)
-		loglike -= 0.5*torch.matmul(torch.matmul(self.invcovars, data), data)
-		# print('!!!!!!!!!!!!!!!!!!')
-		# print(loglike)
+# 		return loglike
+
+# 	def Posterior(self, data):
+# 		post = F.softmax(self.ComponentLogLikelihood(data), -1)
+
+# 		return post
+
+	def ComponentLogLikelihood(self, data, gmm_frame_bs=200): # data: (T, dim)
+		loglike = torch.matmul(self.means_invcovars.unsqueeze(0), data.unsqueeze(-1)).squeeze(-1) # (T, n_g)
+		bs = gmm_frame_bs
+		for T_i in range(math.ceil(loglike.shape[0] / bs)):
+			s = T_i*bs
+			e = (T_i+1)*bs
+			# print(data.shape[0], T_i, s, e, data[s:e].shape)
+			loglike[s:e, :] -= 0.5*torch.matmul(torch.matmul(self.invcovars.unsqueeze(0), data[s:e, :].unsqueeze(1).unsqueeze(-1)).squeeze(-1), 
+							    data[s:e, :].unsqueeze(-1)).squeeze(-1) # (T, n_g)
 		loglike += self.gconsts
-		# print('!!!!!!!!!!!!!!!!!!')
-		# print(loglike)
-		# print('!!!!!!!!!!!!!!!!!!')
 
 		return loglike
 
-	def Posterior(self, data):
-		post = F.softmax(self.ComponentLogLikelihood(data), -1)
+	def Posterior(self, data, gmm_frame_bs=200):
+		post = F.softmax(self.ComponentLogLikelihood(data, gmm_frame_bs), -1)
 
 		return post
 
@@ -124,16 +146,25 @@ class FullGMM(object):
 
 		return zeroth_stats, firstcenter_stats
 
-	def Zeroth_First_Stats(self, data_seq):
-		num_frame = len(data_seq)
-		zeroth_stats = torch.zeros(self.num_gaussians, device=self.device)
-		first_stats = torch.zeros(self.num_gaussians, self.dim, device=self.device)
-		for i in range(num_frame):
-			post = self.Posterior(data_seq[i])
-			zeroth_stats += post
-			first_stats += torch.mm(post.unsqueeze(-1), data_seq[i].unsqueeze(0))
+	# naive loop over the frames in the original code, too slow
+# 	def Zeroth_First_Stats(self, data_seq):
+# 		num_frame = len(data_seq)
+# 		zeroth_stats = torch.zeros(self.num_gaussians, device=self.device)
+# 		first_stats = torch.zeros(self.num_gaussians, self.dim, device=self.device)
+# 		for i in range(num_frame):
+# 			post = self.Posterior(data_seq[i])
+# 			zeroth_stats += post
+# 			first_stats += torch.mm(post.unsqueeze(-1), data_seq[i].unsqueeze(0))
 
-		# firstcenter_stats -= torch.mm(torch.diag(zeroth_stats), self.means)
+# 		# firstcenter_stats -= torch.mm(torch.diag(zeroth_stats), self.means)
+
+# 		return zeroth_stats, first_stats
+	
+	# improvment by SEC4SR (this repo)
+	def Zeroth_First_Stats(self, data_seq, gmm_frame_bs=200):
+		posts = self.Posterior(data_seq, gmm_frame_bs) # (T, n_g)
+		zeroth_stats = torch.sum(posts, 0) # (n_g)
+		first_stats = torch.sum(torch.matmul(posts.unsqueeze(-1), data_seq.unsqueeze(1)), 0)
 
 		return zeroth_stats, first_stats
 
