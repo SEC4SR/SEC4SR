@@ -17,7 +17,7 @@ BITS = 16
 class iv_plda(nn.Module):
 
     def __init__(self, fgmm_file, extractor_file, plda_file, mean_file, transform_mat_file, 
-                        model_file=None, threshold=None, device="cpu"):
+                        model_file=None, threshold=None, device="cpu", gmm_frame_bs=200):
 
         super().__init__()
 
@@ -76,6 +76,11 @@ class iv_plda(nn.Module):
             0, 1, 2, 3
         ]) # 0: wav; 1: raw feat; 2: delta feat; 3: cmvn feat
         self.range_type = 'origin'
+        
+        # how many frames to be processed in one batch when calculating the 0-th and 1-th stats in GMM; 
+		# setting > 1 to speed up the computation
+        # adjust it according to your GPU memory
+        self.gmm_frame_bs = gmm_frame_bs
 
     
     def compute_feat(self, x, flag=1):
@@ -378,7 +383,7 @@ class iv_plda(nn.Module):
         '''
         batch_emb = None
         for mfcc in x:
-            zeroth_stats, first_stats = self.fgmm.Zeroth_First_Stats(mfcc)
+            zeroth_stats, first_stats = self.fgmm.Zeroth_First_Stats(mfcc, self.gmm_frame_bs)
             emb, _, _ = self.extractor.Extract(zeroth_stats, first_stats)
             emb = self.process_emb(emb, num_utt=1, simple_length_norm=False, normalize_length=True)
 
