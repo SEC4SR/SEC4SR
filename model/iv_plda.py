@@ -78,7 +78,7 @@ class iv_plda(nn.Module):
         self.range_type = 'origin'
         
         # how many frames to be processed in one batch when calculating the 0-th and 1-th stats in GMM; 
-		# setting > 1 to speed up the computation
+	# setting > 1 to speed up the computation
         # adjust it according to your GPU memory
         self.gmm_frame_bs = gmm_frame_bs
 
