@@ -42,6 +42,7 @@ def parse_args():
     iv_parser.add_argument('-mean', default='pre-trained-models/iv_plda/mean.vec')
     iv_parser.add_argument('-transform', default='pre-trained-models/iv_plda/transform.txt')
     iv_parser.add_argument('-model_file', default='model_file/iv_plda/speaker_model_iv_plda')
+    iv_parser.add_argument('-gmm_frame_bs', type=int, default=200)
     
     xv_parser = subparser.add_parser("xv_plda")
     xv_parser.add_argument('-extractor', default='pre-trained-models/xv_plda/xvecTDNN_origin.ckpt')
@@ -157,7 +158,8 @@ def main(args):
 
     # set up model
     if args.system_type == 'iv_plda':
-        base_model = iv_plda(args.gmm, args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file, threshold=args.threshold)
+        base_model = iv_plda(args.gmm, args.extractor, args.plda, args.mean, args.transform, device=device, 
+                             model_file=args.model_file, threshold=args.threshold, gmm_frame_bs=args.gmm_frame_bs)
     elif args.system_type == 'xv_plda':
         base_model = xv_plda(args.extractor, args.plda, args.mean, args.transform, device=device, model_file=args.model_file, threshold=args.threshold)
     elif args.system_type == 'audionet_csine':
