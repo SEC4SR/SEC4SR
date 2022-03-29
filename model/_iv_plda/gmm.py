@@ -13,6 +13,8 @@ These improvements greatly speed up the computation.
 import torch
 import torch.nn.functional as F
 
+import math
+
 
 class FullGMM(object):
 	def __init__(self, mdlfile, random=False, device="cpu"):
