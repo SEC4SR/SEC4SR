@@ -1,12 +1,53 @@
+# News
+- The **SEC4SR** platform in this repo will be merged into [**SpeakerGuard**](https://github.com/SpeakerGuard/SpeakerGuard). Consider using **SpeakerGuard** since it contains the latest changes and features. 
 
 # SEC4SR
 This repository contains the code for SEC4SR (**SEC**urity evaluation platform **FOR** **S**peaker **R**ecogntion), a Pytorch library for adversarial machine learning research on speaker recognition.
 
-Paper: Anonymous Submission to a conference (Under Review Currently)
+<!-- Paper: Anonymous Submission to a conference (Under Review Currently) -->
+Paper:
+- [SEC4SR paper](https://arxiv.org/abs/2109.01766)
+- [SpeakerGuard paper (recommended)](https://arxiv.org/abs/2206.03393)
 
-Website: [SEC4SR Website](https://sec4sr.github.io)
+Website: 
+- [SEC4SR Website](https://sec4sr.github.io) 
+- [SpeakerGuard website](https://speakerguard.github.io/)
 
 Feel free to use SEC4SR for academic purpose 😄. For commercial purpose, please contact us 📫.
+
+If you use our platform/code, consider citing our paper as follow:
+```
+@article{SEC4SR,
+  author    = {Guangke Chen and
+               Zhe Zhao and
+               Fu Song and
+               Sen Chen and
+               Lingling Fan and
+               Yang Liu},
+  title     = {{SEC4SR:} {A} Security Analysis Platform for Speaker Recognition},
+  journal   = {CoRR},
+  volume    = {abs/2109.01766},
+  year      = {2021}
+}
+```
+
+or
+
+```
+@article{SpeakerGuard,
+  author    = {Guangke Chen and
+               Zhe Zhao and
+               Fu Song and
+               Sen Chen and
+               Lingling Fan and
+               Feng Wang and 
+               Jiashui Wang},
+  title     = {Towards Understanding and Mitigating Audio Adversarial Examples for Speaker Recognition},
+  journal   = {CoRR},
+  volume    = {abs/2206.03393},
+  year      = {2022}
+}
+```
 
 # 1. Usage
 ## 1.1 Requirements
