@@ -53,7 +53,8 @@ pytorch=1.6.0, torchaudio=0.6.0, numpy=1.19.2, scipy=1.4.1,
 [libKMCUDA=6.2.3](https://github.com/src-d/kmcuda), kmeans-pytorch=0.3, torch-lfilter=0.0.3, 
 pesq=0.0.2, pystoi=0.3.3, librosa=0.8.0, kaldi-io=0.9.4
 
-If you don't have GPU, you can skip libKMCUDA.
+Note: libKMCUDA and kmeans-pytorch=0.3 are used by our proposed feature-level defense **Feature Compression (FeCo)**, for GPU and CPU version, respectively.
+If you don't have GPU, you can skip libKMCUDA. If you have problem in installing libKMCUDA, see [my instructions](instructions_install_libKMCUDA.md).
 
 If you want to use speech_compression methods in `defense/speech_compression.py`, you should also install `ffmpeg` and the required de/en-coders. See this [instructions](instructions_ffmpeg.md).
 
@@ -114,9 +115,9 @@ Single speaker models for SV task are  stored as `speaker_model_iv_plda_{ID}` an
   python attackMain.py -task CSI -root ./data -name Spk251_test -des ./adver-audio/QT-512-audionet-fakebob audionet_csine -extractor ./model_file/QT-512-natural-audionet FAKEBOB -epsilon 0.002
   ```
 
-- Example 2: PGD targeted attack on FeCo-defended xvector-plda model for OSI task. FeCo is randomized, using EOT
+- Example 2: PGD targeted attack on FeCo-defended ivector-plda model for CSI task. FeCo is randomized, using EOT
   ```
-  python attackMain.py -threshold 18.72 -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./data -name Spk10_imposter -des ./adver-audio/xv-pgd -task OSI -EOT_size 5 -EOT_batch_size 5 -targeted xv_plda -model_file ./model_file/xv_plda/speaker_model_xv_plda PGD -epsilon 0.002 -max_iter 5 -loss Margin
+  python attackMain.py -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./data -name Spk10_test -des ./adver-audio/iv-pgd -task CSI -EOT_size 5 -EOT_batch_size 5 -targeted iv_plda -model_file ./model_file/iv_plda/speaker_model_iv_plda PGD -epsilon 0.002 -max_iter 5 -loss Margin
   ```
 
   Note: `-defense_flag 1` means we want FeCo to operate at the raw acoustic feature level. 
@@ -129,12 +130,12 @@ Single speaker models for SV task are  stored as `speaker_model_iv_plda_{ID}` an
   ```
 - Example 2: Testing for adaptive attack
   ```
-  python test_attack.py -threshold 18.72 -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./adver-audio -name xv-pgd xv_plda -model_file ./model_file/xv_plda/speaker_model_xv_plda
+  python test_attack.py -defense FeCo -defense_param "kmeans 0.2 L2" -defense_flag 1 -root ./adver-audio -name iv-pgd iv_plda -model_file ./model_file/iv_plda/speaker_model_iv_plda
   ```
 
 In Example 1, the adversarial examples are generated on undefended audionet model, but tested on QT-defended audionet model, so it is **non-adaptive** attack.
 
-In Example 2, the adversarial examples are generated on FeCo-defended xvector-plda model using EOT (to overcome the randomness of FeCo), and also tested on FeCo-defended xvector-plda model, so it is **adaptive** attack. 
+In Example 2, the adversarial examples are generated on FeCo-defended ivector-plda model using EOT (to overcome the randomness of FeCo), and also tested on FeCo-defended ivector-plda model, so it is **adaptive** attack. 
 In this example, the adaptive attack may be not strong enough. 
 You can improve its attack capacity by setting a larger max_iter or larger EOT_size at the cost of increased attack overhead.
 
